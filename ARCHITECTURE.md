@@ -92,7 +92,11 @@ User
 ├── email (unique)
 ├── name
 ├── avatarUrl?
+├── gender: MALE | FEMALE
+├── isOver18: Boolean
 ├── skillLevel: BEGINNER | INTERMEDIATE | ADVANCED | OPEN
+├── tosAcceptedAt: DateTime?
+├── tosVersion: String?
 └── (NextAuth) accounts[], sessions[]
 ```
 
@@ -103,7 +107,8 @@ Organization
 ├── name
 ├── slug (unique → org.yourapp.com)
 ├── logoUrl?
-└── paypalEmail?
+├── paypalEmail?
+└── joinCode: String (unique)  ← shareable code for players to join the org
 
 OrganizationMember          ← junction: User ↔ Organization
 ├── id
@@ -168,18 +173,26 @@ Event
 ├── refundPolicy: NONE | FULL | PARTIAL
 ├── refundDeadline?
 ├── seedingType: MANUAL | RANDOM | CUSTOM
+├── description?
+├── bannerImageUrl?
 │
 ├── (League only)
 │   ├── startDate
 │   ├── weeks
 │   ├── currentWeek
-│   └── playoffTeams        ← how many teams advance to playoffs
+│   ├── playoffTeams        ← how many teams advance to playoffs
+│   ├── maxSets: Int        ← 1, 3, or 5
+│   ├── pointsToWinSet: Int ← typically 21
+│   └── pointsToWinDecider: Int ← typically 15
 │
 └── (Tournament only)
     ├── startDate
     ├── endDate
     ├── bracketType: SINGLE_ELIM | DOUBLE_ELIM
-    └── hasPoolPlay: Boolean
+    ├── hasPoolPlay: Boolean
+    ├── maxSets: Int
+    ├── pointsToWinSet: Int
+    └── pointsToWinDecider: Int
 
 Division                    ← groups within an event (Men's A, Women's, Coed, etc.)
 ├── id
@@ -225,8 +238,9 @@ TeamMember                  ← junction: User ↔ Team
 ├── id
 ├── userId
 ├── teamId
-└── role: CAPTAIN | PLAYER
-   @@unique([userId, teamId])  ← player can be on multiple teams across different events
+├── role: CAPTAIN | PLAYER
+├── jerseyNumber: Int?
+└── @@unique([userId, teamId])  ← player can be on multiple teams across different events
 
 FreeAgent                   ← players without a team looking to play
 ├── id
@@ -275,7 +289,6 @@ Game
 ├── courtId?                ← optional court assignment
 ├── isBye: Boolean          ← handles odd number of teams
 ├── scheduledAt             ← date + time
-├── location?               ← address or venue description
 ├── originalScheduledAt?    ← set if game was rescheduled
 ├── rescheduleReason?
 ├── notes?                  ← admin/captain notes (incidents, conditions, etc.)
@@ -288,7 +301,8 @@ Game
     ├── position
     ├── bracketSide: WINNERS | LOSERS | GRAND_FINAL
     ├── nextGameId?          ← where winner advances
-    └── loserNextGameId?     ← where loser goes (double elim only)
+    ├── loserNextGameId?     ← where loser goes (double elim only)
+    └── isBracketReset: Boolean ← double elim grand final reset game
 
 GameSet                     ← individual set scores within a game
 ├── id
@@ -360,6 +374,8 @@ ActivityLog                 ← audit trail for accountability
 - Score confirmation workflow (any captain/admin can enter scores directly)
 - Player invitation system (admins/captains assign players directly)
 - Player check-in for tournaments
+- Player position field
+- Forfeit grace period
 
 ---
 
