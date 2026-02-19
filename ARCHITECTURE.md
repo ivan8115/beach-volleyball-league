@@ -59,6 +59,7 @@ Browser:    localhost:54323  → Supabase Studio (visual DB editor)
 |---|---|---|
 | Site Admin | Global | Manage everything, all orgs |
 | Org Admin | Organization | Create/manage events, teams, announcements |
+| Scorer | Organization | Enter scores only, no management access |
 | Team Captain | Team | Manage roster, enter scores, manage team |
 | Player | Team | View schedule, standings, game results |
 
@@ -69,8 +70,10 @@ Browser:    localhost:54323  → Supabase Studio (visual DB editor)
 ### League
 - Runs for X weeks with weekly scheduled games
 - Round-robin scheduling within divisions
+- AI-assisted scheduling using player availability constraints
 - After final week, standings determine playoff seeding
 - Ends with a playoff bracket (single or double elimination)
+- Option to switch from double to single elimination at semifinals
 - Individual players pay registration fee
 - Tiebreaker order: wins → set ratio (sets won/played) → point ratio (points scored/played)
 
@@ -78,8 +81,17 @@ Browser:    localhost:54323  → Supabase Studio (visual DB editor)
 - 1-2 day event
 - Option A: Straight to bracket (single or double elimination)
 - Option B: Pool play (round-robin groups) → elimination bracket
+- Option to switch from double to single elimination at semifinals
+- Optional third place match
 - Teams pay registration fee (one payment per team)
 - Seeding: Manual (admin sets seeds), Random (system randomizes), Custom (admin controls full placement)
+
+---
+
+## Bracket Generator
+The existing `bracket-generator` repo contains bracket logic the user previously built.
+Review this before writing any bracket generation code — port to TypeScript if viable,
+build from scratch only if needed.
 
 ---
 
@@ -97,6 +109,9 @@ User
 ├── skillLevel: BEGINNER | INTERMEDIATE | ADVANCED | OPEN
 ├── tosAcceptedAt: DateTime?
 ├── tosVersion: String?
+├── privacyPolicyAcceptedAt: DateTime?
+├── privacyPolicyVersion: String?
+├── deletedAt: DateTime?
 └── (NextAuth) accounts[], sessions[]
 ```
 
@@ -108,13 +123,15 @@ Organization
 ├── slug (unique → org.yourapp.com)
 ├── logoUrl?
 ├── paypalEmail?
-└── joinCode: String (unique)  ← shareable code for players to join the org
+├── timezone: String          ← e.g. "America/New_York"
+├── joinCode: String (unique) ← shareable code for players to join the org
+└── deletedAt: DateTime?
 
-OrganizationMember          ← junction: User ↔ Organization
+OrganizationMember            ← junction: User ↔ Organization
 ├── id
 ├── userId
 ├── organizationId
-└── role: ADMIN | MEMBER
+└── role: ADMIN | SCORER | MEMBER
 ```
 
 ### Subscription & Plans
@@ -135,24 +152,24 @@ Subscription
 ├── status: ACTIVE | PAST_DUE | CANCELLED | TRIALING
 ├── currentPeriodStart
 ├── currentPeriodEnd
-├── stripeSubscriptionId?   ← nullable until Stripe is wired up
+├── stripeSubscriptionId?     ← nullable until Stripe is wired up
 ├── stripeCustomerId?
 └── cancelledAt?
 ```
 
 ### Venues & Courts
 ```
-Venue                       ← org's regular playing locations
+Venue                         ← org's regular playing locations
 ├── id
 ├── organizationId
 ├── name
 ├── address
 └── googleMapsUrl?
 
-Court                       ← named courts within a venue
+Court                         ← named courts within a venue
 ├── id
-├── venueId                 ← belongs to Venue, not directly to Event
-└── name                    ← Court 1, Main Court, etc.
+├── venueId                   ← belongs to Venue, not directly to Event
+└── name                      ← Court 1, Main Court, etc.
 ```
 
 ### Events
@@ -162,8 +179,10 @@ Event
 ├── name
 ├── type: LEAGUE | TOURNAMENT
 ├── status: DRAFT | REGISTRATION | ACTIVE | PLAYOFF | COMPLETED
-├── visibility: PUBLIC | PRIVATE
+├── visibility: PUBLIC | UNLISTED | PRIVATE
 ├── organizationId
+├── description?
+├── bannerImageUrl?
 ├── registrationDeadline?
 ├── rosterLockDate?
 ├── maxTeams?
@@ -173,54 +192,96 @@ Event
 ├── refundPolicy: NONE | FULL | PARTIAL
 ├── refundDeadline?
 ├── seedingType: MANUAL | RANDOM | CUSTOM
-├── description?
-├── bannerImageUrl?
+├── championTeamId?           ← set when event completes
+├── runnerUpTeamId?
+├── thirdPlaceTeamId?
+├── deletedAt: DateTime?
 │
 ├── (League only)
 │   ├── startDate
 │   ├── weeks
 │   ├── currentWeek
-│   ├── playoffTeams        ← how many teams advance to playoffs
-│   ├── maxSets: Int        ← 1, 3, or 5
-│   ├── pointsToWinSet: Int ← typically 21
-│   └── pointsToWinDecider: Int ← typically 15
+│   ├── playoffTeams          ← how many teams advance to playoffs
+│   ├── collectAvailability: Boolean ← enables player availability form at registration
+│   ├── maxSets: Int          ← 1, 3, or 5
+│   ├── pointsToWinSet: Int   ← typically 21
+│   ├── pointsToWinDecider: Int ← typically 15
+│   └── switchToSingleElimAtSemifinals: Boolean
 │
 └── (Tournament only)
     ├── startDate
     ├── endDate
     ├── bracketType: SINGLE_ELIM | DOUBLE_ELIM
     ├── hasPoolPlay: Boolean
+    ├── teamsPerPool: Int?
+    ├── teamsAdvancingPerPool: Int?
+    ├── hasThirdPlaceMatch: Boolean
     ├── maxSets: Int
     ├── pointsToWinSet: Int
-    └── pointsToWinDecider: Int
+    ├── pointsToWinDecider: Int
+    └── switchToSingleElimAtSemifinals: Boolean
 
-Division                    ← groups within an event (Men's A, Women's, Coed, etc.)
+Division                      ← groups within an event (Men's A, Women's, Coed, etc.)
 ├── id
 ├── name
 └── eventId
 
-Pool                        ← tournament pool play groups (Pool A, Pool B, etc.)
+Pool                          ← tournament pool play groups (Pool A, Pool B, etc.)
 ├── id
 ├── name
 └── eventId
 
-PoolTeam                    ← junction: Pool ↔ Team
+PoolTeam                      ← junction: Pool ↔ Team
 ├── poolId
 ├── teamId
-└── seed?                   ← seed within the pool
+└── seed?                     ← seed within the pool
 
-TeamSeed                    ← stores seed numbers per team per event
+TeamSeed                      ← stores seed numbers per team per event
 ├── id
 ├── eventId
 ├── teamId
 └── seed: Int
 
-TimeSlot                    ← defines when games can be scheduled for a league
+TimeSlot                      ← defines when games can be scheduled for a league
 ├── id
 ├── eventId
 ├── dayOfWeek: MON | TUE | WED | THU | FRI | SAT | SUN
 ├── startTime
 └── courtId?
+```
+
+### Player Availability (League only)
+```
+PlayerAvailability            ← collected during league registration
+├── id
+├── userId
+├── eventId
+└── constraints[]
+
+AvailabilityConstraint        ← individual unavailable window
+├── id
+├── playerAvailabilityId
+├── type: DAY_OF_WEEK         ← recurring unavailable day
+│       | SPECIFIC_DATE       ← one-off unavailable date
+│       | TIME_RANGE          ← recurring unavailable time window
+│       | DATE_TIME_RANGE     ← specific date + time window
+├── dayOfWeek?                ← for DAY_OF_WEEK type
+├── specificDate?             ← for SPECIFIC_DATE type
+├── startTime?                ← for TIME_RANGE type
+├── endTime?                  ← for TIME_RANGE type
+├── startDateTime?            ← for DATE_TIME_RANGE type
+└── endDateTime?              ← for DATE_TIME_RANGE type
+```
+
+### Schedule Constraints
+```
+ScheduleConstraint            ← team-level unavailability for league scheduling
+├── id
+├── teamId
+├── eventId
+├── dayOfWeek?                ← recurring unavailable day
+├── specificDate?             ← one-off unavailable date
+└── reason?
 ```
 
 ### Teams & Players
@@ -232,24 +293,26 @@ Team
 ├── primaryColor?
 ├── eventId
 ├── divisionId?
-└── registrationStatus: PENDING_PAYMENT | REGISTERED | WAITLISTED | WITHDRAWN
+├── registrationStatus: PENDING_PAYMENT | REGISTERED | WAITLISTED | WITHDRAWN
+└── deletedAt: DateTime?
 
-TeamMember                  ← junction: User ↔ Team
+TeamMember                    ← junction: User ↔ Team
 ├── id
 ├── userId
 ├── teamId
 ├── role: CAPTAIN | PLAYER
 ├── jerseyNumber: Int?
-└── @@unique([userId, teamId])  ← player can be on multiple teams across different events
+├── deletedAt: DateTime?
+└── @@unique([userId, teamId]) ← player can be on multiple teams across different events
 
-FreeAgent                   ← players without a team looking to play
+FreeAgent                     ← players without a team looking to play
 ├── id
 ├── userId
 ├── eventId
-├── notes                   ← position, skill level, availability
+├── notes                     ← skill level, availability
 └── status: AVAILABLE | PLACED
 
-Waitlist                    ← teams waiting for a spot when event is full
+Waitlist                      ← teams waiting for a spot when event is full
 ├── id
 ├── eventId
 ├── teamId
@@ -259,15 +322,15 @@ Waitlist                    ← teams waiting for a spot when event is full
 
 ### Custom Registration Fields
 ```
-CustomField                 ← org-defined fields collected at registration
+CustomField                   ← org-defined fields collected at registration
 ├── id
 ├── eventId
 ├── label
 ├── type: TEXT | NUMBER | SELECT | BOOLEAN
-├── options: JSON?          ← for SELECT type
+├── options: JSON?            ← for SELECT type
 └── required: Boolean
 
-CustomFieldResponse         ← player responses to custom fields
+CustomFieldResponse           ← player responses to custom fields
 ├── id
 ├── customFieldId
 ├── userId
@@ -285,13 +348,15 @@ Game
 ├── forfeitingTeamId?
 ├── homeTeamId?
 ├── awayTeamId?
-├── refereeTeamId?          ← optional, teams can ref each other
-├── courtId?                ← optional court assignment
-├── isBye: Boolean          ← handles odd number of teams
-├── scheduledAt             ← date + time
-├── originalScheduledAt?    ← set if game was rescheduled
+├── refereeTeamId?            ← optional, teams can ref each other
+├── courtId?                  ← optional court assignment
+├── isBye: Boolean            ← handles odd number of teams (league)
+├── isBracketBye: Boolean     ← handles non-power-of-2 team counts (bracket)
+├── scheduledAt               ← date + time
+├── originalScheduledAt?      ← set if game was rescheduled
 ├── rescheduleReason?
-├── notes?                  ← admin/captain notes (incidents, conditions, etc.)
+├── notes?                    ← admin/captain notes (incidents, conditions, etc.)
+├── deletedAt: DateTime?
 │
 ├── (League only)
 │   └── week
@@ -300,11 +365,11 @@ Game
     ├── round
     ├── position
     ├── bracketSide: WINNERS | LOSERS | GRAND_FINAL
-    ├── nextGameId?          ← where winner advances
-    ├── loserNextGameId?     ← where loser goes (double elim only)
+    ├── nextGameId?            ← where winner advances
+    ├── loserNextGameId?       ← where loser goes (double elim only)
     └── isBracketReset: Boolean ← double elim grand final reset game
 
-GameSet                     ← individual set scores within a game
+GameSet                       ← individual set scores within a game
 ├── id
 ├── gameId
 ├── setNumber (1, 2, or 3)
@@ -324,10 +389,10 @@ Tiebreaker order:
 ```
 Payment
 ├── id
-├── payerId                 ← user who made the payment
+├── payerId                   ← user who made the payment
 ├── eventId
 ├── type: PLAYER_REGISTRATION | TEAM_REGISTRATION
-├── teamId?                 ← set for tournament team payments
+├── teamId?                   ← set for tournament team payments
 ├── amount
 ├── status: PENDING | COMPLETED | REFUNDED | FAILED
 ├── paypalTransactionId
@@ -343,19 +408,21 @@ Announcement
 ├── title
 ├── body
 ├── postedById
+├── targetType: EVENT | DIVISION | TEAM  ← who sees this announcement
+├── targetId?                 ← divisionId or teamId (null = whole event)
 └── postedAt
 ```
 
 ### Activity Log
 ```
-ActivityLog                 ← audit trail for accountability
+ActivityLog                   ← audit trail for accountability
 ├── id
 ├── organizationId
-├── userId                  ← who performed the action
-├── action                  ← SCORE_ENTERED | ROSTER_CHANGED | GAME_RESCHEDULED | etc.
-├── entityType              ← GAME | TEAM | EVENT | etc.
+├── userId                    ← who performed the action
+├── action                    ← SCORE_ENTERED | ROSTER_CHANGED | GAME_RESCHEDULED | etc.
+├── entityType                ← GAME | TEAM | EVENT | etc.
 ├── entityId
-├── metadata: JSON          ← before/after values
+├── metadata: JSON            ← before/after values
 └── createdAt
 ```
 
@@ -369,6 +436,7 @@ ActivityLog                 ← audit trail for accountability
 - Stripe org subscription implementation (schema ready, not wired up)
 - Waitlist auto-promotion logic (schema ready)
 - Org subdomains (architecture supports it, not built yet)
+- AI schedule generation (availability data collected, AI integration deferred)
 
 ## Features Explicitly Dropped
 - Score confirmation workflow (any captain/admin can enter scores directly)
@@ -376,6 +444,8 @@ ActivityLog                 ← audit trail for accountability
 - Player check-in for tournaments
 - Player position field
 - Forfeit grace period
+- Game series for playoffs (single games only)
+- Currency configuration (USD only for now)
 
 ---
 
@@ -388,14 +458,15 @@ ActivityLog                 ← audit trail for accountability
 ---
 
 ## Build Order (Tentative)
-1. Auth + Org setup (users, orgs, roles, subscriptions)
+1. Auth + Org setup (users, orgs, roles, join codes)
 2. Event creation (league and tournament configuration)
-3. Team + player registration + payments (PayPal)
-4. League scheduling (weekly games, time slots, bye handling)
-5. Tournament brackets (pool play + elimination)
+3. Team + player registration + availability constraints + payments (PayPal)
+4. League scheduling (weekly games, time slots, bye handling, availability)
+5. Tournament brackets (pool play + elimination, bracket generator port)
 6. Score entry + standings calculation
 7. Playoff bracket generation from league standings
-8. Announcements + venue/court management
+8. Announcements (with targeting) + venue/court management
 9. Activity log + custom registration fields
 10. Multi-tenant polish (subdomains, plan limits)
-11. Stripe integration (org subscriptions)
+11. AI schedule optimization
+12. Stripe integration (org subscriptions)
