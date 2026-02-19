@@ -125,6 +125,9 @@ Organization
 ├── paypalEmail?
 ├── timezone: String          ← e.g. "America/New_York"
 ├── joinCode: String (unique) ← shareable code for players to join the org
+├── website?: String
+├── instagramUrl?: String
+├── facebookUrl?: String
 └── deletedAt: DateTime?
 
 OrganizationMember            ← junction: User ↔ Organization
@@ -169,7 +172,8 @@ Venue                         ← org's regular playing locations
 Court                         ← named courts within a venue
 ├── id
 ├── venueId                   ← belongs to Venue, not directly to Event
-└── name                      ← Court 1, Main Court, etc.
+├── name                      ← Court 1, Main Court, etc.
+└── notes?                    ← e.g. "under maintenance", "sand only"
 ```
 
 ### Events
@@ -192,39 +196,45 @@ Event
 ├── refundPolicy: NONE | FULL | PARTIAL
 ├── refundDeadline?
 ├── seedingType: MANUAL | RANDOM | CUSTOM
-├── championTeamId?           ← set when event completes
-├── runnerUpTeamId?
-├── thirdPlaceTeamId?
+├── championTeamId?           ← tournament only (leagues track per division)
+├── runnerUpTeamId?           ← tournament only
+├── thirdPlaceTeamId?         ← tournament only
+├── rulesDocument?: String    ← markdown/rich text rules for the event
 ├── deletedAt: DateTime?
 │
 ├── (League only)
 │   ├── startDate
 │   ├── weeks
 │   ├── currentWeek
-│   ├── playoffTeams          ← how many teams advance to playoffs
 │   ├── collectAvailability: Boolean ← enables player availability form at registration
 │   ├── maxSets: Int          ← 1, 3, or 5
 │   ├── pointsToWinSet: Int   ← typically 21
-│   ├── pointsToWinDecider: Int ← typically 15
-│   └── switchToSingleElimAtSemifinals: Boolean
+│   └── pointsToWinDecider: Int ← typically 15
+│   (bracket config moved to Division level)
 │
 └── (Tournament only)
     ├── startDate
     ├── endDate
     ├── bracketType: SINGLE_ELIM | DOUBLE_ELIM
+    ├── switchToSingleElimAtSemifinals: Boolean
     ├── hasPoolPlay: Boolean
     ├── teamsPerPool: Int?
     ├── teamsAdvancingPerPool: Int?
     ├── hasThirdPlaceMatch: Boolean
     ├── maxSets: Int
     ├── pointsToWinSet: Int
-    ├── pointsToWinDecider: Int
-    └── switchToSingleElimAtSemifinals: Boolean
+    └── pointsToWinDecider: Int
 
 Division                      ← groups within an event (Men's A, Women's, Coed, etc.)
 ├── id
 ├── name
-└── eventId
+├── eventId
+├── bracketType: SINGLE_ELIM | DOUBLE_ELIM
+├── playoffTeams: Int
+├── switchToSingleElimAtSemifinals: Boolean
+├── championTeamId?
+├── runnerUpTeamId?
+└── thirdPlaceTeamId?
 
 Pool                          ← tournament pool play groups (Pool A, Pool B, etc.)
 ├── id
@@ -294,6 +304,7 @@ Team
 ├── eventId
 ├── divisionId?
 ├── registrationStatus: PENDING_PAYMENT | REGISTERED | WAITLISTED | WITHDRAWN
+├── adminNotes?: String       ← internal notes, visible to org admins only
 └── deletedAt: DateTime?
 
 TeamMember                    ← junction: User ↔ Team
@@ -302,6 +313,7 @@ TeamMember                    ← junction: User ↔ Team
 ├── teamId
 ├── role: CAPTAIN | PLAYER
 ├── jerseyNumber: Int?
+├── registrationStatus: PENDING_PAYMENT | REGISTERED
 ├── deletedAt: DateTime?
 └── @@unique([userId, teamId]) ← player can be on multiple teams across different events
 
@@ -316,6 +328,14 @@ Waitlist                      ← teams waiting for a spot when event is full
 ├── id
 ├── eventId
 ├── teamId
+├── position
+└── joinedAt
+
+PlayerWaitlist                ← individual players waiting when a division is full
+├── id
+├── userId
+├── eventId
+├── divisionId?
 ├── position
 └── joinedAt
 ```
@@ -413,6 +433,19 @@ Announcement
 └── postedAt
 ```
 
+### Game Score History
+```
+GameScoreHistory              ← tracks score corrections for accountability
+├── id
+├── gameSetId
+├── previousHomeScore
+├── previousAwayScore
+├── newHomeScore
+├── newAwayScore
+├── changedById
+└── changedAt
+```
+
 ### Activity Log
 ```
 ActivityLog                   ← audit trail for accountability
@@ -428,6 +461,11 @@ ActivityLog                   ← audit trail for accountability
 
 ---
 
+## Mobile Strategy
+- **Phase 1**: Responsive web with Tailwind (works great in mobile browser)
+- **Phase 2**: Progressive Web App (PWA) — Add to Home Screen, app-like feel
+- **Phase 3**: Expo mobile app (true native iOS/Android, same API)
+
 ## Features Explicitly Deferred (Phase 2)
 - Player stats (kills, aces, digs, blocks)
 - Email / push notifications
@@ -436,7 +474,9 @@ ActivityLog                   ← audit trail for accountability
 - Stripe org subscription implementation (schema ready, not wired up)
 - Waitlist auto-promotion logic (schema ready)
 - Org subdomains (architecture supports it, not built yet)
-- AI schedule generation (availability data collected, AI integration deferred)
+- AI schedule optimization (availability data collected, AI integration deferred)
+- PWA support
+- Expo mobile app
 
 ## Features Explicitly Dropped
 - Score confirmation workflow (any captain/admin can enter scores directly)
@@ -446,6 +486,8 @@ ActivityLog                   ← audit trail for accountability
 - Forfeit grace period
 - Game series for playoffs (single games only)
 - Currency configuration (USD only for now)
+- Court availability table (scheduler handles this, notes field on Court instead)
+- Game check-in for leagues
 
 ---
 
