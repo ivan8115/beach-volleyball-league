@@ -72,13 +72,14 @@ Browser:    localhost:54323  → Supabase Studio (visual DB editor)
 - After final week, standings determine playoff seeding
 - Ends with a playoff bracket (single or double elimination)
 - Individual players pay registration fee
+- Tiebreaker order: wins → set ratio (sets won/played) → point ratio (points scored/played)
 
 ### Tournament
 - 1-2 day event
 - Option A: Straight to bracket (single or double elimination)
 - Option B: Pool play (round-robin groups) → elimination bracket
 - Teams pay registration fee (one payment per team)
-- Seeding: Manual, Random draw, or Custom (admin controlled)
+- Seeding: Manual (admin sets seeds), Random (system randomizes), Custom (admin controls full placement)
 
 ---
 
@@ -91,6 +92,7 @@ User
 ├── email (unique)
 ├── name
 ├── avatarUrl?
+├── skillLevel: BEGINNER | INTERMEDIATE | ADVANCED | OPEN
 └── (NextAuth) accounts[], sessions[]
 ```
 
@@ -133,6 +135,21 @@ Subscription
 └── cancelledAt?
 ```
 
+### Venues & Courts
+```
+Venue                       ← org's regular playing locations
+├── id
+├── organizationId
+├── name
+├── address
+└── googleMapsUrl?
+
+Court                       ← named courts within a venue
+├── id
+├── venueId                 ← belongs to Venue, not directly to Event
+└── name                    ← Court 1, Main Court, etc.
+```
+
 ### Events
 ```
 Event
@@ -172,8 +189,25 @@ Division                    ← groups within an event (Men's A, Women's, Coed, 
 Pool                        ← tournament pool play groups (Pool A, Pool B, etc.)
 ├── id
 ├── name
+└── eventId
+
+PoolTeam                    ← junction: Pool ↔ Team
+├── poolId
+├── teamId
+└── seed?                   ← seed within the pool
+
+TeamSeed                    ← stores seed numbers per team per event
+├── id
 ├── eventId
-└── teams[]
+├── teamId
+└── seed: Int
+
+TimeSlot                    ← defines when games can be scheduled for a league
+├── id
+├── eventId
+├── dayOfWeek: MON | TUE | WED | THU | FRI | SAT | SUN
+├── startTime
+└── courtId?
 ```
 
 ### Teams & Players
@@ -184,7 +218,8 @@ Team
 ├── logoUrl?
 ├── primaryColor?
 ├── eventId
-└── divisionId?
+├── divisionId?
+└── registrationStatus: PENDING_PAYMENT | REGISTERED | WAITLISTED | WITHDRAWN
 
 TeamMember                  ← junction: User ↔ Team
 ├── id
@@ -208,12 +243,22 @@ Waitlist                    ← teams waiting for a spot when event is full
 └── joinedAt
 ```
 
-### Courts
+### Custom Registration Fields
 ```
-Court                       ← named courts within an event
+CustomField                 ← org-defined fields collected at registration
 ├── id
 ├── eventId
-└── name                    ← Court 1, Main Court, etc.
+├── label
+├── type: TEXT | NUMBER | SELECT | BOOLEAN
+├── options: JSON?          ← for SELECT type
+└── required: Boolean
+
+CustomFieldResponse         ← player responses to custom fields
+├── id
+├── customFieldId
+├── userId
+├── value
+└── submittedAt
 ```
 
 ### Games
@@ -233,6 +278,7 @@ Game
 ├── location?               ← address or venue description
 ├── originalScheduledAt?    ← set if game was rescheduled
 ├── rescheduleReason?
+├── notes?                  ← admin/captain notes (incidents, conditions, etc.)
 │
 ├── (League only)
 │   └── week
@@ -286,6 +332,19 @@ Announcement
 └── postedAt
 ```
 
+### Activity Log
+```
+ActivityLog                 ← audit trail for accountability
+├── id
+├── organizationId
+├── userId                  ← who performed the action
+├── action                  ← SCORE_ENTERED | ROSTER_CHANGED | GAME_RESCHEDULED | etc.
+├── entityType              ← GAME | TEAM | EVENT | etc.
+├── entityId
+├── metadata: JSON          ← before/after values
+└── createdAt
+```
+
 ---
 
 ## Features Explicitly Deferred (Phase 2)
@@ -300,6 +359,7 @@ Announcement
 ## Features Explicitly Dropped
 - Score confirmation workflow (any captain/admin can enter scores directly)
 - Player invitation system (admins/captains assign players directly)
+- Player check-in for tournaments
 
 ---
 
@@ -315,10 +375,11 @@ Announcement
 1. Auth + Org setup (users, orgs, roles, subscriptions)
 2. Event creation (league and tournament configuration)
 3. Team + player registration + payments (PayPal)
-4. League scheduling (weekly games, bye handling)
+4. League scheduling (weekly games, time slots, bye handling)
 5. Tournament brackets (pool play + elimination)
 6. Score entry + standings calculation
 7. Playoff bracket generation from league standings
-8. Announcements + court management
-9. Multi-tenant polish (subdomains, plan limits)
-10. Stripe integration (org subscriptions)
+8. Announcements + venue/court management
+9. Activity log + custom registration fields
+10. Multi-tenant polish (subdomains, plan limits)
+11. Stripe integration (org subscriptions)
