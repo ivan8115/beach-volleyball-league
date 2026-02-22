@@ -8,7 +8,7 @@ Read `ARCHITECTURE.md` for the full schema, stack decisions, and planning contex
 - **Framework**: Next.js 14 (App Router) with TypeScript
 - **Database**: PostgreSQL via Supabase (free tier)
 - **ORM**: Prisma
-- **Auth**: NextAuth.js
+- **Auth**: Supabase Auth (Google OAuth + email/password, integrates with RLS)
 - **Styling**: Tailwind CSS + shadcn/ui
 - **Hosting**: Vercel (frontend) + Supabase (database)
 - **Payments**: PayPal (event registration) + Stripe (org subscriptions, future)

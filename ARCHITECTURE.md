@@ -17,7 +17,7 @@ Initially built for one org, designed to scale to many.
 | Framework | Next.js 14 (App Router) | Frontend + API routes, TypeScript |
 | Database | PostgreSQL via Supabase | Free tier to start |
 | ORM | Prisma | Type-safe queries, migrations |
-| Auth | NextAuth.js | Sessions, JWT, OAuth |
+| Auth | Supabase Auth | Sessions, JWT, OAuth (Google), integrates with RLS |
 | Styling | Tailwind CSS + shadcn/ui | Pre-built components |
 | Hosting (FE) | Vercel | Free tier, auto-deploys on git push |
 | Hosting (DB) | Supabase | Free tier (500MB, 50k MAU) |
@@ -112,7 +112,7 @@ User
 ├── privacyPolicyAcceptedAt: DateTime?
 ├── privacyPolicyVersion: String?
 ├── deletedAt: DateTime?
-└── (NextAuth) accounts[], sessions[]
+└── supabaseUserId (uuid) ← links to Supabase Auth user
 ```
 
 ### Organization
