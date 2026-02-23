@@ -1,0 +1,657 @@
+// This is your Prisma schema file
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============ ENUMS ============
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum SkillLevel {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  OPEN
+}
+
+enum OrgRole {
+  ADMIN
+  SCORER
+  MEMBER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  PAST_DUE
+  CANCELLED
+  TRIALING
+}
+
+enum EventType {
+  LEAGUE
+  TOURNAMENT
+}
+
+enum EventStatus {
+  DRAFT
+  REGISTRATION
+  ACTIVE
+  PLAYOFF
+  COMPLETED
+}
+
+enum EventVisibility {
+  PUBLIC
+  UNLISTED
+  PRIVATE
+}
+
+enum RefundPolicy {
+  NONE
+  FULL
+  PARTIAL
+}
+
+enum SeedingType {
+  MANUAL
+  RANDOM
+  CUSTOM
+}
+
+enum BracketType {
+  SINGLE_ELIM
+  DOUBLE_ELIM
+}
+
+enum DayOfWeek {
+  MON
+  TUE
+  WED
+  THU
+  FRI
+  SAT
+  SUN
+}
+
+enum TeamRegistrationStatus {
+  PENDING_PAYMENT
+  REGISTERED
+  WAITLISTED
+  WITHDRAWN
+}
+
+enum MemberRegistrationStatus {
+  PENDING_PAYMENT
+  REGISTERED
+}
+
+enum TeamMemberRole {
+  CAPTAIN
+  PLAYER
+}
+
+enum FreeAgentStatus {
+  AVAILABLE
+  PLACED
+}
+
+enum GameStatus {
+  SCHEDULED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  FORFEITED
+}
+
+enum BracketSide {
+  WINNERS
+  LOSERS
+  GRAND_FINAL
+}
+
+enum CustomFieldType {
+  TEXT
+  NUMBER
+  SELECT
+  BOOLEAN
+}
+
+enum PaymentType {
+  PLAYER_REGISTRATION
+  TEAM_REGISTRATION
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  REFUNDED
+  FAILED
+}
+
+enum AnnouncementTargetType {
+  EVENT
+  DIVISION
+  TEAM
+}
+
+enum AvailabilityConstraintType {
+  DAY_OF_WEEK
+  SPECIFIC_DATE
+  TIME_RANGE
+  DATE_TIME_RANGE
+}
+
+// ============ MODELS ============
+
+model User {
+  id                      String     @id @default(cuid())
+  email                   String     @unique
+  name                    String
+  avatarUrl               String?
+  gender                  Gender
+  isOver18                Boolean
+  skillLevel              SkillLevel
+  tosAcceptedAt           DateTime?
+  tosVersion              String?
+  privacyPolicyAcceptedAt DateTime?
+  privacyPolicyVersion    String?
+  deletedAt               DateTime?
+  supabaseUserId          String     @unique @db.Uuid
+  createdAt               DateTime   @default(now())
+  updatedAt               DateTime   @updatedAt
+
+  organizations        OrganizationMember[]
+  teamMemberships      TeamMember[]
+  freeAgents           FreeAgent[]
+  playerWaitlist       PlayerWaitlist[]
+  payments             Payment[]
+  announcements        Announcement[]
+  activityLogs         ActivityLog[]
+  playerAvailabilities PlayerAvailability[]
+  customFieldResponses CustomFieldResponse[]
+  scoreChanges         GameScoreHistory[]
+}
+
+model Organization {
+  id           String    @id @default(cuid())
+  name         String
+  slug         String    @unique
+  logoUrl      String?
+  paypalEmail  String?
+  timezone     String
+  joinCode     String    @unique
+  website      String?
+  instagramUrl String?
+  facebookUrl  String?
+  deletedAt    DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  members       OrganizationMember[]
+  subscription  Subscription?
+  venues        Venue[]
+  events        Event[]
+  announcements Announcement[]
+  activityLogs  ActivityLog[]
+}
+
+model OrganizationMember {
+  id             String   @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole
+  createdAt      DateTime @default(now())
+
+  user         User         @relation(fields: [userId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+
+  @@unique([userId, organizationId])
+}
+
+model Plan {
+  id           String  @id @default(cuid())
+  name         String
+  monthlyPrice Decimal
+  maxEvents    Int
+  maxTeams     Int
+  maxAdmins    Int
+  features     Json
+
+  subscriptions Subscription[]
+}
+
+model Subscription {
+  id                   String             @id @default(cuid())
+  organizationId       String             @unique
+  planId               String
+  status               SubscriptionStatus
+  currentPeriodStart   DateTime
+  currentPeriodEnd     DateTime
+  stripeSubscriptionId String?
+  stripeCustomerId     String?
+  cancelledAt          DateTime?
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  plan         Plan         @relation(fields: [planId], references: [id])
+}
+
+model Venue {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  address        String
+  googleMapsUrl  String?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  courts       Court[]
+}
+
+model Court {
+  id      String  @id @default(cuid())
+  venueId String
+  name    String
+  notes   String?
+
+  venue     Venue      @relation(fields: [venueId], references: [id])
+  games     Game[]
+  timeSlots TimeSlot[]
+}
+
+model Event {
+  id                   String          @id @default(cuid())
+  name                 String
+  type                 EventType
+  status               EventStatus
+  visibility           EventVisibility
+  organizationId       String
+  description          String?
+  bannerImageUrl       String?
+  registrationDeadline DateTime?
+  rosterLockDate       DateTime?
+  maxTeams             Int?
+  minRosterSize        Int
+  maxRosterSize        Int
+  registrationFee      Decimal?
+  refundPolicy         RefundPolicy
+  refundDeadline       DateTime?
+  seedingType          SeedingType
+  championTeamId       String?
+  runnerUpTeamId       String?
+  thirdPlaceTeamId     String?
+  rulesDocument        String?
+  deletedAt            DateTime?
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+
+  // League only
+  startDate                DateTime?
+  weeks                    Int?
+  currentWeek              Int?
+  collectAvailability      Boolean?
+  leagueMaxSets            Int?
+  leaguePointsToWinSet     Int?
+  leaguePointsToWinDecider Int?
+
+  // Tournament only
+  tournamentStartDate            DateTime?
+  endDate                        DateTime?
+  bracketType                    BracketType?
+  switchToSingleElimAtSemifinals Boolean?
+  hasPoolPlay                    Boolean?
+  teamsPerPool                   Int?
+  teamsAdvancingPerPool          Int?
+  hasThirdPlaceMatch             Boolean?
+  tournamentMaxSets              Int?
+  tournamentPointsToWinSet       Int?
+  tournamentPointsToWinDecider   Int?
+
+  organization         Organization         @relation(fields: [organizationId], references: [id])
+  teams                Team[]
+  divisions            Division[]
+  pools                Pool[]
+  games                Game[]
+  timeSlots            TimeSlot[]
+  payments             Payment[]
+  announcements        Announcement[]
+  customFields         CustomField[]
+  freeAgents           FreeAgent[]
+  waitlist             Waitlist[]
+  playerWaitlist       PlayerWaitlist[]
+  teamSeeds            TeamSeed[]
+  playerAvailabilities PlayerAvailability[]
+  scheduleConstraints  ScheduleConstraint[]
+}
+
+model Division {
+  id                             String      @id @default(cuid())
+  name                           String
+  eventId                        String
+  bracketType                    BracketType
+  playoffTeams                   Int
+  switchToSingleElimAtSemifinals Boolean
+  championTeamId                 String?
+  runnerUpTeamId                 String?
+  thirdPlaceTeamId               String?
+  createdAt                      DateTime    @default(now())
+
+  event          Event            @relation(fields: [eventId], references: [id])
+  teams          Team[]
+  games          Game[]
+  playerWaitlist PlayerWaitlist[]
+}
+
+model Pool {
+  id      String @id @default(cuid())
+  name    String
+  eventId String
+
+  event     Event      @relation(fields: [eventId], references: [id])
+  poolTeams PoolTeam[]
+}
+
+model PoolTeam {
+  poolId String
+  teamId String
+  seed   Int?
+
+  pool Pool @relation(fields: [poolId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@id([poolId, teamId])
+}
+
+model TeamSeed {
+  id      String @id @default(cuid())
+  eventId String
+  teamId  String
+  seed    Int
+
+  event Event @relation(fields: [eventId], references: [id])
+  team  Team  @relation(fields: [teamId], references: [id])
+
+  @@unique([eventId, teamId])
+}
+
+model TimeSlot {
+  id        String    @id @default(cuid())
+  eventId   String
+  dayOfWeek DayOfWeek
+  startTime String    // HH:MM 24-hour format
+  courtId   String?
+
+  event Event  @relation(fields: [eventId], references: [id])
+  court Court? @relation(fields: [courtId], references: [id])
+}
+
+model PlayerAvailability {
+  id      String @id @default(cuid())
+  userId  String
+  eventId String
+
+  user        User                     @relation(fields: [userId], references: [id])
+  event       Event                    @relation(fields: [eventId], references: [id])
+  constraints AvailabilityConstraint[]
+
+  @@unique([userId, eventId])
+}
+
+model AvailabilityConstraint {
+  id                   String                     @id @default(cuid())
+  playerAvailabilityId String
+  type                 AvailabilityConstraintType
+  dayOfWeek            DayOfWeek?
+  specificDate         DateTime?
+  startTime            String?    // HH:MM 24-hour, for TIME_RANGE type
+  endTime              String?    // HH:MM 24-hour, for TIME_RANGE type
+  startDateTime        DateTime?  // for DATE_TIME_RANGE type
+  endDateTime          DateTime?  // for DATE_TIME_RANGE type
+
+  playerAvailability PlayerAvailability @relation(fields: [playerAvailabilityId], references: [id])
+}
+
+model ScheduleConstraint {
+  id           String     @id @default(cuid())
+  teamId       String
+  eventId      String
+  dayOfWeek    DayOfWeek?
+  specificDate DateTime?
+  reason       String?
+
+  team  Team  @relation(fields: [teamId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Team {
+  id                 String                 @id @default(cuid())
+  name               String
+  logoUrl            String?
+  primaryColor       String?
+  eventId            String
+  divisionId         String?
+  registrationStatus TeamRegistrationStatus
+  adminNotes         String?
+  deletedAt          DateTime?
+  createdAt          DateTime               @default(now())
+  updatedAt          DateTime               @updatedAt
+
+  event               Event                @relation(fields: [eventId], references: [id])
+  division            Division?            @relation(fields: [divisionId], references: [id])
+  members             TeamMember[]
+  poolTeams           PoolTeam[]
+  teamSeeds           TeamSeed[]
+  waitlistEntry       Waitlist?
+  homeGames           Game[]               @relation("HomeTeam")
+  awayGames           Game[]               @relation("AwayTeam")
+  refereeGames        Game[]               @relation("RefereeTeam")
+  forfeitedGames      Game[]               @relation("ForfeitingTeam")
+  payments            Payment[]
+  scheduleConstraints ScheduleConstraint[]
+}
+
+model TeamMember {
+  id                 String                   @id @default(cuid())
+  userId             String
+  teamId             String
+  role               TeamMemberRole
+  jerseyNumber       Int?
+  registrationStatus MemberRegistrationStatus
+  deletedAt          DateTime?
+  createdAt          DateTime                 @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([userId, teamId])
+}
+
+model FreeAgent {
+  id        String          @id @default(cuid())
+  userId    String
+  eventId   String
+  notes     String
+  status    FreeAgentStatus
+  createdAt DateTime        @default(now())
+
+  user  User  @relation(fields: [userId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+}
+
+model Waitlist {
+  id       String   @id @default(cuid())
+  eventId  String
+  teamId   String   @unique
+  position Int
+  joinedAt DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  team  Team  @relation(fields: [teamId], references: [id])
+}
+
+model PlayerWaitlist {
+  id         String   @id @default(cuid())
+  userId     String
+  eventId    String
+  divisionId String?
+  position   Int
+  joinedAt   DateTime @default(now())
+
+  user     User      @relation(fields: [userId], references: [id])
+  event    Event     @relation(fields: [eventId], references: [id])
+  division Division? @relation(fields: [divisionId], references: [id])
+}
+
+model CustomField {
+  id       String          @id @default(cuid())
+  eventId  String
+  label    String
+  type     CustomFieldType
+  options  Json?
+  required Boolean
+
+  event     Event                 @relation(fields: [eventId], references: [id])
+  responses CustomFieldResponse[]
+}
+
+model CustomFieldResponse {
+  id            String   @id @default(cuid())
+  customFieldId String
+  userId        String
+  value         String
+  submittedAt   DateTime @default(now())
+
+  customField CustomField @relation(fields: [customFieldId], references: [id])
+  user        User        @relation(fields: [userId], references: [id])
+}
+
+model Game {
+  id                  String      @id @default(cuid())
+  eventId             String
+  divisionId          String?
+  status              GameStatus
+  forfeitingTeamId    String?
+  homeTeamId          String?
+  awayTeamId          String?
+  refereeTeamId       String?
+  courtId             String?
+  isBye               Boolean     @default(false)
+  isBracketBye        Boolean     @default(false)
+  scheduledAt         DateTime
+  originalScheduledAt DateTime?
+  rescheduleReason    String?
+  notes               String?
+  deletedAt           DateTime?
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+
+  // League only
+  week Int?
+
+  // Bracket only
+  round          Int?
+  position       Int?
+  bracketSide    BracketSide?
+  nextGameId     String?
+  loserNextGameId String?
+  isBracketReset Boolean      @default(false)
+
+  event         Event     @relation(fields: [eventId], references: [id])
+  division      Division? @relation(fields: [divisionId], references: [id])
+  homeTeam      Team?     @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  awayTeam      Team?     @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  refereeTeam   Team?     @relation("RefereeTeam", fields: [refereeTeamId], references: [id])
+  forfeitingTeam Team?    @relation("ForfeitingTeam", fields: [forfeitingTeamId], references: [id])
+  court         Court?    @relation(fields: [courtId], references: [id])
+  nextGame      Game?     @relation("NextGame", fields: [nextGameId], references: [id])
+  nextGameOf    Game[]    @relation("NextGame")
+  loserNextGame Game?     @relation("LoserNextGame", fields: [loserNextGameId], references: [id])
+  loserNextGameOf Game[]  @relation("LoserNextGame")
+  sets          GameSet[]
+}
+
+model GameSet {
+  id          String    @id @default(cuid())
+  gameId      String
+  setNumber   Int
+  homeScore   Int
+  awayScore   Int
+  completedAt DateTime?
+
+  game         Game               @relation(fields: [gameId], references: [id])
+  scoreHistory GameScoreHistory[]
+
+  @@unique([gameId, setNumber])
+}
+
+model GameScoreHistory {
+  id                String   @id @default(cuid())
+  gameSetId         String
+  previousHomeScore Int
+  previousAwayScore Int
+  newHomeScore      Int
+  newAwayScore      Int
+  changedById       String
+  changedAt         DateTime @default(now())
+
+  gameSet   GameSet @relation(fields: [gameSetId], references: [id])
+  changedBy User    @relation(fields: [changedById], references: [id])
+}
+
+model Payment {
+  id                  String        @id @default(cuid())
+  payerId             String
+  eventId             String
+  type                PaymentType
+  teamId              String?
+  amount              Decimal
+  status              PaymentStatus
+  paypalTransactionId String
+  paidAt              DateTime?
+  createdAt           DateTime      @default(now())
+
+  payer User  @relation(fields: [payerId], references: [id])
+  event Event @relation(fields: [eventId], references: [id])
+  team  Team? @relation(fields: [teamId], references: [id])
+}
+
+model Announcement {
+  id             String                 @id @default(cuid())
+  eventId        String
+  organizationId String
+  title          String
+  body           String
+  postedById     String
+  targetType     AnnouncementTargetType
+  targetId       String?
+  postedAt       DateTime               @default(now())
+
+  event        Event        @relation(fields: [eventId], references: [id])
+  organization Organization @relation(fields: [organizationId], references: [id])
+  postedBy     User         @relation(fields: [postedById], references: [id])
+}
+
+model ActivityLog {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  action         String
+  entityType     String
+  entityId       String
+  metadata       Json
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  user         User         @relation(fields: [userId], references: [id])
+}
