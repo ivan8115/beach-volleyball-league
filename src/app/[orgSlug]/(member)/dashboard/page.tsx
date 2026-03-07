@@ -79,6 +79,26 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
 
   const isAdmin = membership.role === "ADMIN" || membership.role === "SCORER";
 
+  // Fetch user's team registrations for this org's events
+  const myTeams = await prisma.teamMember.findMany({
+    where: {
+      userId: dbUser.id,
+      deletedAt: null,
+      team: { deletedAt: null, event: { organizationId: org.id } },
+    },
+    include: {
+      team: {
+        select: {
+          id: true,
+          name: true,
+          registrationStatus: true,
+          event: { select: { id: true, name: true } },
+        },
+      },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-background">
@@ -107,41 +127,86 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
         <h1 className="mb-8 text-2xl font-bold">Dashboard</h1>
 
         <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <h2 className="mb-4 text-lg font-semibold">Events</h2>
-            {org.events.length === 0 ? (
-              <p className="text-muted-foreground">No events yet.</p>
-            ) : (
-              <div className="grid gap-3 sm:grid-cols-2">
-                {org.events.map((event) => {
-                  const startDate = event.startDate ?? event.tournamentStartDate;
-                  return (
-                    <Card key={event.id} className="hover:shadow-sm transition-shadow">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between gap-2">
-                          <CardTitle className="text-sm font-medium">{event.name}</CardTitle>
-                          <Badge variant="secondary" className="shrink-0 text-xs">
-                            {STATUS_LABELS[event.status]}
-                          </Badge>
-                        </div>
+          <div className="lg:col-span-2 space-y-8">
+            {/* My teams */}
+            {myTeams.length > 0 && (
+              <div>
+                <h2 className="mb-4 text-lg font-semibold">My registrations</h2>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {myTeams.map((tm) => (
+                    <Card key={tm.id} className="hover:shadow-sm transition-shadow">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-sm font-medium">{tm.team.name}</CardTitle>
                         <CardDescription className="text-xs">
-                          {event.type === "LEAGUE" ? "League" : "Tournament"}
-                          {startDate && (
-                            <>
-                              {" · "}
-                              {new Date(startDate).toLocaleDateString("en-US", {
-                                month: "short",
-                                day: "numeric",
-                              })}
-                            </>
-                          )}
+                          {tm.team.event.name}
+                          {" · "}
+                          <span className="capitalize">{tm.role.toLowerCase()}</span>
                         </CardDescription>
                       </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="flex items-center justify-between">
+                          <span className={`text-xs rounded-full px-2 py-0.5 font-medium ${
+                            tm.team.registrationStatus === "REGISTERED"
+                              ? "bg-green-100 text-green-800"
+                              : tm.team.registrationStatus === "WAITLISTED"
+                              ? "bg-yellow-100 text-yellow-800"
+                              : "bg-gray-100 text-gray-600"
+                          }`}>
+                            {tm.team.registrationStatus}
+                          </span>
+                          <Link
+                            href={`/${orgSlug}/events/${tm.team.event.id}/team/${tm.team.id}`}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            View team
+                          </Link>
+                        </div>
+                      </CardContent>
                     </Card>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
             )}
+
+            {/* Events */}
+            <div>
+              <h2 className="mb-4 text-lg font-semibold">Events</h2>
+              {org.events.length === 0 ? (
+                <p className="text-muted-foreground">No events yet.</p>
+              ) : (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {org.events.map((event) => {
+                    const startDate = event.startDate ?? event.tournamentStartDate;
+                    return (
+                      <Link key={event.id} href={`/${orgSlug}/events/${event.id}`}>
+                        <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                          <CardHeader className="pb-3">
+                            <div className="flex items-start justify-between gap-2">
+                              <CardTitle className="text-sm font-medium">{event.name}</CardTitle>
+                              <Badge variant="secondary" className="shrink-0 text-xs">
+                                {STATUS_LABELS[event.status]}
+                              </Badge>
+                            </div>
+                            <CardDescription className="text-xs">
+                              {event.type === "LEAGUE" ? "League" : "Tournament"}
+                              {startDate && (
+                                <>
+                                  {" · "}
+                                  {new Date(startDate).toLocaleDateString("en-US", {
+                                    month: "short",
+                                    day: "numeric",
+                                  })}
+                                </>
+                              )}
+                            </CardDescription>
+                          </CardHeader>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
 
           <div>

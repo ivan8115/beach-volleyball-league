@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { createClient } from "@/lib/supabase/server";
 import { EventStatusBadge } from "@/components/events/event-status-badge";
 import type { EventStatus, EventType } from "@/generated/prisma/enums";
 
@@ -15,11 +17,44 @@ const typeLabel: Record<EventType, string> = {
 export default async function PublicEventPage({ params }: PageProps) {
   const { orgSlug, eventId } = await params;
 
+  // Check if the current user is an org member (to show Register button)
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  let isMember = false;
+  let alreadyRegistered = false;
+
   const org = await prisma.organization.findFirst({
     where: { slug: orgSlug, deletedAt: null },
     select: { id: true, name: true, slug: true },
   });
   if (!org) notFound();
+
+  if (user) {
+    const dbUser = await prisma.user.findUnique({
+      where: { supabaseUserId: user.id },
+      select: { id: true },
+    });
+    if (dbUser) {
+      const membership = await prisma.organizationMember.findFirst({
+        where: { userId: dbUser.id, organizationId: org.id },
+      });
+      isMember = !!membership;
+
+      if (isMember) {
+        const teamMembership = await prisma.teamMember.findFirst({
+          where: {
+            userId: dbUser.id,
+            team: { eventId, deletedAt: null },
+            deletedAt: null,
+          },
+        });
+        const freeAgent = await prisma.freeAgent.findFirst({
+          where: { userId: dbUser.id, eventId },
+        });
+        alreadyRegistered = !!(teamMembership ?? freeAgent);
+      }
+    }
+  }
 
   const event = await prisma.event.findFirst({
     where: {
@@ -48,6 +83,33 @@ export default async function PublicEventPage({ params }: PageProps) {
           </div>
           <p className="text-muted-foreground">{typeLabel[event.type]}</p>
         </div>
+
+        {/* Register CTA */}
+        {event.status === "REGISTRATION" &&
+          (!event.registrationDeadline || new Date() < event.registrationDeadline) && (
+            <div className="rounded-lg border bg-muted/30 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+              {alreadyRegistered ? (
+                <p className="text-sm font-medium text-green-700">You&apos;re registered for this event.</p>
+              ) : isMember ? (
+                <>
+                  <p className="text-sm font-medium">Registration is open!</p>
+                  <Link
+                    href={`/${orgSlug}/events/${eventId}/register`}
+                    className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                  >
+                    Register
+                  </Link>
+                </>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  <Link href={`/${orgSlug}/join`} className="text-primary hover:underline">
+                    Join the org
+                  </Link>{" "}
+                  to register for this event.
+                </p>
+              )}
+            </div>
+          )}
 
         {/* Details grid */}
         <div className="grid grid-cols-1 gap-4 rounded-lg border p-6 sm:grid-cols-2">

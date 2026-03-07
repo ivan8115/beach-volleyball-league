@@ -17,7 +17,7 @@ interface DivisionInput {
 
 export async function GET(_req: Request, { params }: RouteParams) {
   const { orgSlug, eventId } = await params;
-  const ctx = await getOrgContext(orgSlug, "SCORER");
+  const ctx = await getOrgContext(orgSlug, "MEMBER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const event = await prisma.event.findFirst({

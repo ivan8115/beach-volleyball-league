@@ -100,11 +100,17 @@ export default async function AdminEventsPage({ params }: PageProps) {
                     <EventStatusBadge status={event.status as EventStatus} />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{event._count.teams}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 flex gap-3">
+                    <Link
+                      href={`/${orgSlug}/admin/events/${event.id}/teams`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      Manage
+                    </Link>
                     {membership.role === "ADMIN" && (
                       <Link
                         href={`/${orgSlug}/admin/events/${event.id}/edit`}
-                        className="text-sm text-primary hover:underline"
+                        className="text-sm text-muted-foreground hover:underline"
                       >
                         Edit
                       </Link>
