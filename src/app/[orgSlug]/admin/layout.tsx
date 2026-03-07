@@ -77,6 +77,18 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
               Overview
             </Link>
             <Link
+              href={`/${orgSlug}/admin/events`}
+              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Events
+            </Link>
+            <Link
+              href={`/${orgSlug}/admin/venues`}
+              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Venues
+            </Link>
+            <Link
               href={`/${orgSlug}/admin/members`}
               className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
             >
