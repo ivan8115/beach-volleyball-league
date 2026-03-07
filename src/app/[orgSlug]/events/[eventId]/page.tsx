@@ -84,6 +84,19 @@ export default async function PublicEventPage({ params }: PageProps) {
           <p className="text-muted-foreground">{typeLabel[event.type]}</p>
         </div>
 
+        {/* Schedule link when event is active */}
+        {(event.status === "ACTIVE" || event.status === "PLAYOFF" || event.status === "COMPLETED") && (
+          <div className="rounded-lg border bg-muted/30 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
+            <p className="text-sm font-medium">Event is underway</p>
+            <Link
+              href={`/${orgSlug}/events/${eventId}/schedule`}
+              className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+            >
+              View schedule
+            </Link>
+          </div>
+        )}
+
         {/* Register CTA */}
         {event.status === "REGISTRATION" &&
           (!event.registrationDeadline || new Date() < event.registrationDeadline) && (

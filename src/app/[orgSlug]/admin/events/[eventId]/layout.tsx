@@ -18,11 +18,23 @@ export default async function EventAdminLayout({ children, params }: EventAdminL
 
   const event = await prisma.event.findFirst({
     where: { id: eventId, organizationId: org.id, deletedAt: null },
-    select: { id: true, name: true },
+    select: { id: true, name: true, type: true },
   });
   if (!event) notFound();
 
   const base = `/${orgSlug}/admin/events/${eventId}`;
+
+  const tabs = [
+    { href: `${base}/teams`, label: "Teams" },
+    { href: `${base}/free-agents`, label: "Free agents" },
+    { href: `${base}/waitlist`, label: "Waitlist" },
+    ...(event.type === "LEAGUE"
+      ? [
+          { href: `${base}/schedule`, label: "Schedule" },
+          { href: `${base}/standings`, label: "Standings" },
+        ]
+      : [{ href: `${base}/bracket`, label: "Bracket" }]),
+  ];
 
   return (
     <div className="space-y-6">
@@ -37,11 +49,7 @@ export default async function EventAdminLayout({ children, params }: EventAdminL
       </div>
 
       <nav className="flex gap-1 border-b pb-0">
-        {[
-          { href: `${base}/teams`, label: "Teams" },
-          { href: `${base}/free-agents`, label: "Free agents" },
-          { href: `${base}/waitlist`, label: "Waitlist" },
-        ].map((tab) => (
+        {tabs.map((tab) => (
           <Link
             key={tab.href}
             href={tab.href}
