@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { PayPalButton } from "@/components/paypal-button";
 import { AvailabilityForm } from "@/components/availability/availability-form";
+import { CustomFieldsForm } from "@/components/registration/custom-fields-form";
 
 type Flow = "create" | "join" | "free-agent";
 
@@ -56,6 +57,7 @@ export default function RegisterPage() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [doneTeamId, setDoneTeamId] = useState<string | null>(null);
+  const [showCustomFields, setShowCustomFields] = useState(false);
   const [showAvailability, setShowAvailability] = useState(false);
 
   useEffect(() => {
@@ -74,13 +76,23 @@ export default function RegisterPage() {
   const isLeague = event?.type === "LEAGUE";
   const collectAvailability = isLeague && event?.collectAvailability;
 
-  function handleSuccess(data: Record<string, unknown>) {
-    if (data.teamId) setDoneTeamId(data.teamId as string);
+  function proceedAfterRegistration(teamId?: string) {
+    if (teamId) setDoneTeamId(teamId);
+    // Flow: custom fields → availability → done
+    setShowCustomFields(true);
+  }
+
+  function handleCustomFieldsDone() {
+    setShowCustomFields(false);
     if (collectAvailability) {
       setShowAvailability(true);
     } else {
       setDone(true);
     }
+  }
+
+  function handleSuccess(data: Record<string, unknown>) {
+    proceedAfterRegistration(data.teamId as string | undefined);
   }
 
   async function handleFreeSubmit(e: React.FormEvent) {
@@ -98,7 +110,7 @@ export default function RegisterPage() {
     } else if (data.requiresPayment) {
       // Will show PayPal button - but shouldn't reach here for free events
     } else {
-      setDone(true);
+      proceedAfterRegistration();
     }
     setSubmitting(false);
   }
@@ -117,9 +129,7 @@ export default function RegisterPage() {
     if (!res.ok) {
       setError(data.error ?? "Failed");
     } else {
-      setDoneTeamId(data.id ?? null);
-      if (collectAvailability) setShowAvailability(true);
-      else setDone(true);
+      proceedAfterRegistration(data.id ?? undefined);
     }
     setSubmitting(false);
   }
@@ -138,8 +148,7 @@ export default function RegisterPage() {
     if (!res.ok) {
       setError(data.error ?? "Failed");
     } else {
-      if (collectAvailability) setShowAvailability(true);
-      else setDone(true);
+      proceedAfterRegistration();
     }
     setSubmitting(false);
   }
@@ -168,6 +177,27 @@ export default function RegisterPage() {
           <Link href={`/${orgSlug}/events/${eventId}`} className="text-sm text-primary hover:underline">
             Back to event
           </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (showCustomFields) {
+    return (
+      <div className="min-h-screen bg-background">
+        <div className="mx-auto max-w-2xl px-4 py-10 space-y-6">
+          <div>
+            <h1 className="text-2xl font-bold">Additional information</h1>
+            <p className="text-muted-foreground text-sm mt-1">
+              Please fill in the following fields to complete your registration.
+            </p>
+          </div>
+          <CustomFieldsForm
+            orgSlug={orgSlug}
+            eventId={eventId}
+            onComplete={handleCustomFieldsDone}
+            onSkip={handleCustomFieldsDone}
+          />
         </div>
       </div>
     );
@@ -395,7 +425,7 @@ export default function RegisterPage() {
                 amount={fee}
                 description={`Free agent registration for ${event.name}`}
                 context={{ type: "FREE_AGENT", eventId, notes: faNotes }}
-                onSuccess={() => setDone(true)}
+                onSuccess={() => proceedAfterRegistration()}
                 onError={(err) => setError(String(err))}
               />
             )}

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-log";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string; teamId: string; memberId: string }>;
@@ -66,5 +67,15 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   }
 
   await prisma.teamMember.update({ where: { id: memberId }, data: { deletedAt: new Date() } });
+
+  void logActivity({
+    organizationId: ctx.orgId,
+    userId: ctx.userId,
+    action: "ROSTER_PLAYER_REMOVED",
+    entityType: "TEAM",
+    entityId: teamId,
+    metadata: { removedUserId: member.userId, memberId },
+  });
+
   return NextResponse.json({ success: true });
 }

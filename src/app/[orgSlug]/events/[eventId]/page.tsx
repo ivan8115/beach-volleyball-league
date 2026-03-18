@@ -67,6 +67,17 @@ export default async function PublicEventPage({ params }: PageProps) {
     include: {
       divisions: { orderBy: { name: "asc" } },
       _count: { select: { teams: true } },
+      announcements: {
+        orderBy: { postedAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          title: true,
+          body: true,
+          postedAt: true,
+          targetType: true,
+        },
+      },
     },
   });
   if (!event) notFound();
@@ -84,16 +95,20 @@ export default async function PublicEventPage({ params }: PageProps) {
           <p className="text-muted-foreground">{typeLabel[event.type]}</p>
         </div>
 
-        {/* Schedule link when event is active */}
+        {/* Schedule & standings links when event is active */}
         {(event.status === "ACTIVE" || event.status === "PLAYOFF" || event.status === "COMPLETED") && (
           <div className="rounded-lg border bg-muted/30 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
-            <p className="text-sm font-medium">Event is underway</p>
-            <Link
-              href={`/${orgSlug}/events/${eventId}/schedule`}
-              className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
-            >
-              View schedule
-            </Link>
+            <p className="text-sm font-medium">
+              {event.status === "COMPLETED" ? "Event complete" : "Event is underway"}
+            </p>
+            <div className="flex gap-2">
+              <Link
+                href={`/${orgSlug}/events/${eventId}/schedule`}
+                className="rounded-md border px-4 py-2 text-sm font-medium hover:bg-muted"
+              >
+                Schedule
+              </Link>
+            </div>
           </div>
         )}
 
@@ -154,8 +169,21 @@ export default async function PublicEventPage({ params }: PageProps) {
           )}
           {event.maxTeams && (
             <div>
-              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Max teams</dt>
-              <dd className="mt-1 text-sm">{event._count.teams} / {event.maxTeams}</dd>
+              <dt className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Teams</dt>
+              <dd className="mt-1 text-sm">
+                {event._count.teams} / {event.maxTeams}
+                {event._count.teams >= event.maxTeams && (
+                  <span className="ml-2 text-xs text-destructive font-medium">Full</span>
+                )}
+              </dd>
+              <div className="mt-1.5 h-1.5 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    event._count.teams >= event.maxTeams ? "bg-destructive" : "bg-primary"
+                  }`}
+                  style={{ width: `${Math.min(100, (event._count.teams / event.maxTeams) * 100)}%` }}
+                />
+              </div>
             </div>
           )}
           {event.registrationFee !== null && (
@@ -171,6 +199,29 @@ export default async function PublicEventPage({ params }: PageProps) {
             <dd className="mt-1 text-sm">{event.minRosterSize}–{event.maxRosterSize} players</dd>
           </div>
         </div>
+
+        {/* Announcements */}
+        {event.announcements.length > 0 && (
+          <section className="space-y-3">
+            <h2 className="text-lg font-semibold">Announcements</h2>
+            <div className="space-y-3">
+              {event.announcements.map((a) => (
+                <div key={a.id} className="rounded-lg border p-4 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-medium text-sm">{a.title}</p>
+                    <p className="text-xs text-muted-foreground shrink-0">
+                      {new Date(a.postedAt).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground whitespace-pre-line">{a.body}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* Description */}
         {event.description && (

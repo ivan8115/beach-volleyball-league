@@ -423,13 +423,13 @@ Payment
 ```
 Announcement
 ├── id
-├── eventId
+├── eventId?                  ← nullable — null = org-wide announcement
 ├── organizationId
 ├── title
 ├── body
 ├── postedById
-├── targetType: EVENT | DIVISION | TEAM  ← who sees this announcement
-├── targetId?                 ← divisionId or teamId (null = whole event)
+├── targetType: EVENT | DIVISION | TEAM | ORG  ← who sees this announcement
+├── targetId?                 ← divisionId or teamId (null = whole event/org)
 └── postedAt
 ```
 
@@ -491,24 +491,28 @@ ActivityLog                   ← audit trail for accountability
 
 ---
 
-## What's Left to Plan (Next Session)
-1. **Pages & Routes** — full sitemap, what each role can see and do
-2. **Bracket Logic** — single vs double elimination flow, bye handling, advancement
-3. **Project Scaffolding** — initialize Next.js project, Prisma schema, folder structure
-4. **Build Order** — recommended sequence for implementation
+## Build Order
 
----
+### ✅ Phase 1 — Auth + Org setup
+Auth (Supabase Google OAuth + email/password), onboarding, org creation, join codes, member roles.
 
-## Build Order (Tentative)
-1. Auth + Org setup (users, orgs, roles, join codes)
-2. Event creation (league and tournament configuration)
-3. Team + player registration + availability constraints + payments (PayPal)
-4. League scheduling (weekly games, time slots, bye handling, availability)
-5. Tournament brackets (pool play + elimination, bracket generator port)
-6. Score entry + standings calculation
-7. Playoff bracket generation from league standings
-8. Announcements (with targeting) + venue/court management
-9. Activity log + custom registration fields
-10. Multi-tenant polish (subdomains, plan limits)
-11. AI schedule optimization
-12. Stripe integration (org subscriptions)
+### ✅ Phase 2 — Event creation wizard + venues/courts
+Event creation wizard (league + tournament config), venue/court CRUD, public event page, admin event management.
+
+### ✅ Phase 3 — Team & player registration + payments
+Team create/join/free-agent flows, PayPal registration fees, availability constraints, waitlist, roster management.
+
+### ✅ Phase 4 — Scheduling, brackets & score entry
+League round-robin scheduler, timeslot CRUD, tournament bracket generator (single/double elim + pool play), score entry, standings calculation, playoff bracket generation.
+
+### ✅ Phase 5 — Notifications, announcements, polish
+Bracket advancement automation (winner/loser auto-population, grand final reset), announcements (org-wide + event-scoped), activity log (admin audit trail), custom registration fields, public schedule (mobile-first cards), bracket view polish, dashboard upcoming games widget, event page capacity bar, admin event list with capacity warnings.
+
+### Phase 6 — Deferred
+- Email / push notifications
+- Player stats (kills, aces, digs, blocks)
+- Stripe org subscription implementation
+- Waitlist auto-promotion logic
+- Org subdomains
+- AI schedule optimization
+- PWA / Expo mobile app

@@ -42,7 +42,17 @@ export default async function AdminEventsPage({ params }: PageProps) {
 
   const events = await prisma.event.findMany({
     where: { organizationId: org.id, deletedAt: null },
-    include: { _count: { select: { teams: true } } },
+    select: {
+      id: true,
+      name: true,
+      type: true,
+      status: true,
+      registrationDeadline: true,
+      maxTeams: true,
+      startDate: true,
+      tournamentStartDate: true,
+      _count: { select: { teams: true } },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -73,53 +83,107 @@ export default async function AdminEventsPage({ params }: PageProps) {
           )}
         </div>
       ) : (
-        <div className="overflow-hidden rounded-lg border">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b bg-muted/40">
-                <th className="px-4 py-3 text-left font-medium">Name</th>
-                <th className="px-4 py-3 text-left font-medium">Type</th>
-                <th className="px-4 py-3 text-left font-medium">Status</th>
-                <th className="px-4 py-3 text-left font-medium">Teams</th>
-                <th className="px-4 py-3 text-left font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {events.map((event) => (
-                <tr key={event.id} className="border-b last:border-0 hover:bg-muted/20">
-                  <td className="px-4 py-3 font-medium">
+        <div className="space-y-3">
+          {events.map((event) => {
+            const isFull = event.maxTeams != null && event._count.teams >= event.maxTeams;
+            const isNearFull = event.maxTeams != null && !isFull && event._count.teams >= event.maxTeams * 0.8;
+            const regDeadline = event.registrationDeadline;
+            const daysUntilDeadline = regDeadline
+              ? Math.ceil((regDeadline.getTime() - Date.now()) / 86_400_000)
+              : null;
+            const deadlineSoon = daysUntilDeadline != null && daysUntilDeadline >= 0 && daysUntilDeadline <= 3;
+            const startDate = event.startDate ?? event.tournamentStartDate;
+
+            return (
+              <div key={event.id} className="rounded-lg border p-4 hover:bg-muted/20 transition-colors">
+                <div className="flex items-start justify-between gap-4 flex-wrap">
+                  <div className="min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Link
+                        href={`/${orgSlug}/admin/events/${event.id}/teams`}
+                        className="font-medium hover:underline"
+                      >
+                        {event.name}
+                      </Link>
+                      <EventStatusBadge status={event.status as EventStatus} />
+                      {isFull && (
+                        <span className="text-xs font-medium text-destructive">Full</span>
+                      )}
+                      {isNearFull && (
+                        <span className="text-xs font-medium text-amber-600">Nearly full</span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      <span>{typeLabel[event.type]}</span>
+                      {event.maxTeams != null ? (
+                        <span className={isFull ? "text-destructive font-medium" : ""}>
+                          {event._count.teams} / {event.maxTeams} teams
+                        </span>
+                      ) : (
+                        <span>{event._count.teams} teams</span>
+                      )}
+                      {startDate && (
+                        <span>
+                          Starts {new Date(startDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                        </span>
+                      )}
+                      {deadlineSoon && (
+                        <span className="text-amber-600 font-medium">
+                          Registration closes in {daysUntilDeadline === 0 ? "today" : `${daysUntilDeadline}d`}
+                        </span>
+                      )}
+                    </div>
+                    {event.maxTeams != null && (
+                      <div className="mt-1.5 h-1 w-40 rounded-full bg-muted overflow-hidden">
+                        <div
+                          className={`h-full rounded-full ${isFull ? "bg-destructive" : isNearFull ? "bg-amber-500" : "bg-primary"}`}
+                          style={{ width: `${Math.min(100, (event._count.teams / event.maxTeams) * 100)}%` }}
+                        />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-2 shrink-0">
                     <Link
                       href={`/${orgSlug}/events/${event.id}`}
-                      className="hover:underline"
+                      className="text-xs text-muted-foreground hover:underline"
                     >
-                      {event.name}
+                      Public page
                     </Link>
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{typeLabel[event.type]}</td>
-                  <td className="px-4 py-3">
-                    <EventStatusBadge status={event.status as EventStatus} />
-                  </td>
-                  <td className="px-4 py-3 text-muted-foreground">{event._count.teams}</td>
-                  <td className="px-4 py-3 flex gap-3">
                     <Link
                       href={`/${orgSlug}/admin/events/${event.id}/teams`}
-                      className="text-sm text-primary hover:underline"
+                      className="text-xs text-primary hover:underline"
                     >
-                      Manage
+                      Teams
                     </Link>
+                    {event.type === "LEAGUE" ? (
+                      <Link
+                        href={`/${orgSlug}/admin/events/${event.id}/schedule`}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Schedule
+                      </Link>
+                    ) : (
+                      <Link
+                        href={`/${orgSlug}/admin/events/${event.id}/bracket`}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Bracket
+                      </Link>
+                    )}
                     {membership.role === "ADMIN" && (
                       <Link
                         href={`/${orgSlug}/admin/events/${event.id}/edit`}
-                        className="text-sm text-muted-foreground hover:underline"
+                        className="text-xs text-muted-foreground hover:underline"
                       >
                         Edit
                       </Link>
                     )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>

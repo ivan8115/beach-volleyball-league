@@ -1,10 +1,17 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { createClient } from "@/lib/supabase/server";
 
 interface PageProps {
   params: Promise<{ orgSlug: string; eventId: string }>;
 }
+
+const STATUS_STYLES: Record<string, string> = {
+  COMPLETED: "bg-green-100 text-green-700",
+  IN_PROGRESS: "bg-blue-100 text-blue-700",
+  SCHEDULED: "bg-muted text-muted-foreground",
+};
 
 export default async function PublicSchedulePage({ params }: PageProps) {
   const { orgSlug, eventId } = await params;
@@ -27,7 +34,6 @@ export default async function PublicSchedulePage({ params }: PageProps) {
   });
   if (!event) notFound();
 
-  // Get current user's team if logged in
   const supabase = await createClient();
   const {
     data: { user },
@@ -52,7 +58,6 @@ export default async function PublicSchedulePage({ params }: PageProps) {
     }
   }
 
-  // Fetch all scheduled/in-progress/completed games
   const games = await prisma.game.findMany({
     where: {
       eventId,
@@ -69,78 +74,130 @@ export default async function PublicSchedulePage({ params }: PageProps) {
     orderBy: [{ week: "asc" }, { round: "asc" }, { scheduledAt: "asc" }],
   });
 
-  // Group games by week (league) or round (bracket)
-  const weeks = [
-    ...new Set(games.filter((g) => g.week).map((g) => g.week!)),
-  ].sort((a, b) => a - b);
-
-  const rounds = [
-    ...new Set(games.filter((g) => g.round && !g.week).map((g) => g.round!)),
-  ].sort((a, b) => a - b);
-
+  const weeks = [...new Set(games.filter((g) => g.week).map((g) => g.week!))].sort((a, b) => a - b);
+  const rounds = [...new Set(games.filter((g) => g.round && !g.week).map((g) => g.round!))].sort((a, b) => a - b);
   const isLeague = event.type === "LEAGUE";
 
-  function renderScoreString(sets: Array<{ homeScore: number; awayScore: number }>) {
+  function scoreString(sets: Array<{ homeScore: number; awayScore: number }>) {
     if (sets.length === 0) return null;
     return sets.map((s) => `${s.homeScore}–${s.awayScore}`).join(", ");
   }
 
-  function renderGamesTable(groupGames: typeof games) {
+  function homeWon(sets: Array<{ homeScore: number; awayScore: number }>) {
+    let h = 0, a = 0;
+    for (const s of sets) { if (s.homeScore > s.awayScore) h++; else a++; }
+    return h > a;
+  }
+
+  function renderGameCards(groupGames: typeof games) {
     return (
-      <table className="w-full text-sm border rounded-md overflow-hidden">
-        <thead className="bg-muted text-muted-foreground">
-          <tr>
-            <th className="px-3 py-2 text-left">Date / Time</th>
-            <th className="px-3 py-2 text-left">Court</th>
-            <th className="px-3 py-2 text-left">Home</th>
-            <th className="px-3 py-2 text-left">Away</th>
-            <th className="px-3 py-2 text-left">Score</th>
-          </tr>
-        </thead>
-        <tbody>
-          {groupGames.map((game) => {
-            const isMyGame =
-              myTeamId &&
-              (game.homeTeam?.id === myTeamId || game.awayTeam?.id === myTeamId);
-            const score = renderScoreString(game.sets);
-            return (
-              <tr
-                key={game.id}
-                className={`border-t ${isMyGame ? "bg-primary/5 font-medium" : ""}`}
-              >
-                <td className="px-3 py-2">
+      <div className="space-y-2">
+        {groupGames.map((game) => {
+          const isMyGame = myTeamId && (game.homeTeam?.id === myTeamId || game.awayTeam?.id === myTeamId);
+          const score = scoreString(game.sets);
+          const completed = game.status === "COMPLETED" && game.sets.length > 0;
+          const hWon = completed && homeWon(game.sets);
+
+          return (
+            <div
+              key={game.id}
+              className={`rounded-lg border p-3 ${isMyGame ? "ring-2 ring-primary/30 bg-primary/5" : ""}`}
+            >
+              {/* Teams & Score */}
+              <div className="flex items-center gap-3">
+                <div className="flex-1 min-w-0 space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm truncate ${completed && hWon ? "font-semibold" : ""}`}>
+                      {game.homeTeam ? (
+                        <Link
+                          href={`/${orgSlug}/events/${eventId}/team/${game.homeTeam.id}`}
+                          className="hover:underline"
+                        >
+                          {game.homeTeam.name}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">TBD</span>
+                      )}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm truncate ${completed && !hWon ? "font-semibold" : ""}`}>
+                      {game.awayTeam ? (
+                        <Link
+                          href={`/${orgSlug}/events/${eventId}/team/${game.awayTeam.id}`}
+                          className="hover:underline"
+                        >
+                          {game.awayTeam.name}
+                        </Link>
+                      ) : (
+                        <span className="text-muted-foreground">TBD</span>
+                      )}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Score or status */}
+                <div className="shrink-0 text-right">
+                  {score ? (
+                    <span className="font-mono text-sm">{score}</span>
+                  ) : (
+                    <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-medium ${STATUS_STYLES[game.status] ?? ""}`}>
+                      {game.status === "SCHEDULED" ? "Upcoming" : game.status === "IN_PROGRESS" ? "Live" : game.status.toLowerCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Meta row */}
+              <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                <span>
                   {new Date(game.scheduledAt).toLocaleString(undefined, {
                     weekday: "short",
                     month: "short",
                     day: "numeric",
-                    hour: "2-digit",
+                    hour: "numeric",
                     minute: "2-digit",
                   })}
-                </td>
-                <td className="px-3 py-2">{game.court?.name ?? "—"}</td>
-                <td className="px-3 py-2">{game.homeTeam?.name ?? "TBD"}</td>
-                <td className="px-3 py-2">{game.awayTeam?.name ?? "TBD"}</td>
-                <td className="px-3 py-2 font-mono text-muted-foreground">
-                  {score ?? (game.status === "SCHEDULED" ? "—" : game.status)}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+                </span>
+                {game.court && (
+                  <>
+                    <span className="text-muted-foreground/40">|</span>
+                    <span>{game.court.name}</span>
+                  </>
+                )}
+                {completed && (
+                  <>
+                    <span className="text-muted-foreground/40">|</span>
+                    <span className="text-green-600">Final</span>
+                  </>
+                )}
+                {game.status === "IN_PROGRESS" && (
+                  <>
+                    <span className="text-muted-foreground/40">|</span>
+                    <span className="text-blue-600 font-medium">In progress</span>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="mx-auto max-w-4xl px-4 py-10 space-y-8">
+      <div className="mx-auto max-w-2xl px-4 py-10 space-y-8">
         <div className="space-y-1">
-          <p className="text-sm text-muted-foreground">{org.name}</p>
-          <h1 className="text-2xl font-bold">{event.name} – Schedule</h1>
+          <Link
+            href={`/${orgSlug}/events/${eventId}`}
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← {event.name}
+          </Link>
+          <h1 className="text-2xl font-bold">Schedule</h1>
           {myTeamId && (
-            <p className="text-sm text-muted-foreground">
-              Your games are highlighted.
-            </p>
+            <p className="text-sm text-primary">Your games are highlighted.</p>
           )}
         </div>
 
@@ -153,31 +210,29 @@ export default async function PublicSchedulePage({ params }: PageProps) {
               return (
                 <section key={week} className="space-y-3">
                   <h2 className="text-lg font-semibold">Week {week}</h2>
-                  {renderGamesTable(weekGames)}
+                  {renderGameCards(weekGames)}
                 </section>
               );
             })}
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Pool play games (no round or week, no bracketSide) */}
             {(() => {
               const poolGames = games.filter((g) => !g.week && !g.round);
               return poolGames.length > 0 ? (
                 <section className="space-y-3">
                   <h2 className="text-lg font-semibold">Pool Play</h2>
-                  {renderGamesTable(poolGames)}
+                  {renderGameCards(poolGames)}
                 </section>
               ) : null;
             })()}
 
-            {/* Bracket rounds */}
             {rounds.map((round) => {
               const roundGames = games.filter((g) => g.round === round && !g.week);
               return (
                 <section key={round} className="space-y-3">
                   <h2 className="text-lg font-semibold">Round {round}</h2>
-                  {renderGamesTable(roundGames)}
+                  {renderGameCards(roundGames)}
                 </section>
               );
             })}

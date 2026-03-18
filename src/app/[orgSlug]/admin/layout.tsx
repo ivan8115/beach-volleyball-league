@@ -94,6 +94,18 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
             >
               Members
             </Link>
+            <Link
+              href={`/${orgSlug}/admin/announcements`}
+              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Announcements
+            </Link>
+            <Link
+              href={`/${orgSlug}/admin/activity`}
+              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
+            >
+              Activity
+            </Link>
             {membership.role === "ADMIN" && (
               <Link
                 href={`/${orgSlug}/admin/settings`}

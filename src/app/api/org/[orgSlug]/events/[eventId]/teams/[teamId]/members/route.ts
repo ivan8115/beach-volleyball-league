@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { logActivity } from "@/lib/activity-log";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string; teamId: string }>;
@@ -89,6 +90,15 @@ export async function POST(req: Request, { params }: RouteParams) {
       registrationStatus: "REGISTERED",
     },
     include: { user: { select: { id: true, name: true } } },
+  });
+
+  void logActivity({
+    organizationId: ctx.orgId,
+    userId: ctx.userId,
+    action: "ROSTER_PLAYER_ADDED",
+    entityType: "TEAM",
+    entityId: teamId,
+    metadata: { addedUserId: targetUserId, role: body.role ?? "PLAYER" },
   });
 
   return NextResponse.json(member, { status: 201 });

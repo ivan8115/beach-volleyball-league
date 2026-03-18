@@ -9,6 +9,7 @@ import {
   generatePoolGames,
   type BracketGame,
 } from "@/lib/bracket-generator";
+import { advanceBracketTeams } from "@/lib/bracket-advancement";
 import type { BracketSide } from "@/generated/prisma/enums";
 
 interface RouteParams {
@@ -322,6 +323,33 @@ async function handleGenerateBracket(
         },
       });
       tempIdToDbId.set(bracketGame.tempId, created.id);
+    }
+
+    // Auto-complete bracket bye games and advance the bye-receiving team
+    const byeGames = await tx.game.findMany({
+      where: {
+        eventId: event.id,
+        divisionId: divisionId ?? null,
+        isBracketBye: true,
+        deletedAt: null,
+      },
+      select: {
+        id: true,
+        eventId: true,
+        divisionId: true,
+        homeTeamId: true,
+        awayTeamId: true,
+        nextGameId: true,
+        loserNextGameId: true,
+        bracketSide: true,
+        isBracketReset: true,
+      },
+    });
+
+    for (const bye of byeGames) {
+      await tx.game.update({ where: { id: bye.id }, data: { status: "COMPLETED" } });
+      const winnerTeamId = bye.homeTeamId!; // bye games always have home team, null away
+      await advanceBracketTeams(tx, bye, winnerTeamId, null);
     }
 
     await tx.event.update({

@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
 import type { GameStatus } from "@/generated/prisma/enums";
+import { advanceBracketTeams } from "@/lib/bracket-advancement";
+import { logActivity } from "@/lib/activity-log";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string; gameId: string }>;
@@ -14,6 +16,21 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
   const game = await prisma.game.findFirst({
     where: { id: gameId, eventId, event: { organizationId: ctx.orgId }, deletedAt: null },
+    select: {
+      id: true,
+      eventId: true,
+      divisionId: true,
+      homeTeamId: true,
+      awayTeamId: true,
+      nextGameId: true,
+      loserNextGameId: true,
+      bracketSide: true,
+      isBracketReset: true,
+      originalScheduledAt: true,
+      scheduledAt: true,
+      status: true,
+      forfeitingTeamId: true,
+    },
   });
   if (!game) return NextResponse.json({ error: "Game not found" }, { status: 404 });
 
@@ -75,13 +92,53 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     updateData.notes = body.notes;
   }
 
-  const updated = await prisma.game.update({
-    where: { id: gameId },
-    data: updateData,
-    include: {
-      homeTeam: { select: { id: true, name: true } },
-      awayTeam: { select: { id: true, name: true } },
-      court: { select: { id: true, name: true } },
+  const updated = await prisma.$transaction(async (tx) => {
+    const result = await tx.game.update({
+      where: { id: gameId },
+      data: updateData,
+      include: {
+        homeTeam: { select: { id: true, name: true } },
+        awayTeam: { select: { id: true, name: true } },
+        court: { select: { id: true, name: true } },
+      },
+    });
+
+    // Advance teams in bracket when a game is forfeited
+    if (
+      body.status === "FORFEITED" &&
+      body.forfeitingTeamId &&
+      game.bracketSide
+    ) {
+      const winnerTeamId =
+        body.forfeitingTeamId === game.homeTeamId
+          ? game.awayTeamId!
+          : game.homeTeamId!;
+      const loserTeamId =
+        body.forfeitingTeamId === game.homeTeamId
+          ? game.homeTeamId
+          : game.awayTeamId;
+      await advanceBracketTeams(tx, game, winnerTeamId, loserTeamId);
+    }
+
+    return result;
+  });
+
+  // Determine the action for activity log
+  let action = "GAME_UPDATED";
+  if (body.status === "FORFEITED") action = "GAME_FORFEITED";
+  else if (body.status === "CANCELLED") action = "GAME_CANCELLED";
+  else if (body.scheduledAt !== undefined) action = "GAME_RESCHEDULED";
+
+  void logActivity({
+    organizationId: ctx.orgId,
+    userId: ctx.userId,
+    action,
+    entityType: "GAME",
+    entityId: gameId,
+    metadata: {
+      ...(body.scheduledAt ? { newScheduledAt: body.scheduledAt, rescheduleReason: body.rescheduleReason } : {}),
+      ...(body.status ? { newStatus: body.status } : {}),
+      ...(body.forfeitingTeamId ? { forfeitingTeamId: body.forfeitingTeamId } : {}),
     },
   });
 

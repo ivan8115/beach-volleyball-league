@@ -99,6 +99,32 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
     orderBy: { createdAt: "desc" },
   });
 
+  // Fetch upcoming games for the user's teams
+  const myTeamIds = myTeams.map((tm) => tm.team.id);
+  const upcomingGames = myTeamIds.length > 0
+    ? await prisma.game.findMany({
+        where: {
+          event: { organizationId: org.id },
+          deletedAt: null,
+          status: { in: ["SCHEDULED", "IN_PROGRESS"] },
+          isBye: false,
+          OR: [
+            { homeTeamId: { in: myTeamIds } },
+            { awayTeamId: { in: myTeamIds } },
+          ],
+          scheduledAt: { gte: new Date() },
+        },
+        include: {
+          homeTeam: { select: { id: true, name: true } },
+          awayTeam: { select: { id: true, name: true } },
+          event: { select: { id: true, name: true } },
+          court: { select: { name: true } },
+        },
+        orderBy: { scheduledAt: "asc" },
+        take: 5,
+      })
+    : [];
+
   return (
     <div className="min-h-screen bg-background">
       <nav className="border-b bg-background">
@@ -128,6 +154,52 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
+            {/* Upcoming games */}
+            {upcomingGames.length > 0 && (
+              <div>
+                <h2 className="mb-4 text-lg font-semibold">Upcoming games</h2>
+                <div className="space-y-2">
+                  {upcomingGames.map((game) => {
+                    const isHome = myTeamIds.includes(game.homeTeamId ?? "");
+                    const myTeamName = isHome ? game.homeTeam?.name : game.awayTeam?.name;
+                    const oppTeamName = isHome ? game.awayTeam?.name : game.homeTeam?.name;
+                    return (
+                      <Link key={game.id} href={`/${orgSlug}/events/${game.event.id}/schedule`}>
+                        <Card className="hover:shadow-sm transition-shadow cursor-pointer">
+                          <CardContent className="flex items-center justify-between gap-3 py-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">
+                                {myTeamName} vs {oppTeamName ?? "TBD"}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {game.event.name}
+                                {game.court && <> · {game.court.name}</>}
+                              </p>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-sm font-medium">
+                                {new Date(game.scheduledAt).toLocaleDateString(undefined, {
+                                  weekday: "short",
+                                  month: "short",
+                                  day: "numeric",
+                                })}
+                              </p>
+                              <p className="text-xs text-muted-foreground">
+                                {new Date(game.scheduledAt).toLocaleTimeString(undefined, {
+                                  hour: "numeric",
+                                  minute: "2-digit",
+                                })}
+                              </p>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             {/* My teams */}
             {myTeams.length > 0 && (
               <div>

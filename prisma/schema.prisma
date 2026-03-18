@@ -628,7 +628,7 @@ model Payment {
 
 model Announcement {
   id             String                 @id @default(cuid())
-  eventId        String
+  eventId        String?
   organizationId String
   title          String
   body           String
@@ -637,7 +637,7 @@ model Announcement {
   targetId       String?
   postedAt       DateTime               @default(now())
 
-  event        Event        @relation(fields: [eventId], references: [id])
+  event        Event?       @relation(fields: [eventId], references: [id])
   organization Organization @relation(fields: [organizationId], references: [id])
   postedBy     User         @relation(fields: [postedById], references: [id])
 }

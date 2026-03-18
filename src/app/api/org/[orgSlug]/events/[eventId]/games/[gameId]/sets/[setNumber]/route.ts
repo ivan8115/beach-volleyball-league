@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { advanceBracketTeams } from "@/lib/bracket-advancement";
+import { logActivity } from "@/lib/activity-log";
 
 interface RouteParams {
   params: Promise<{
@@ -23,7 +25,12 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
   const game = await prisma.game.findFirst({
     where: { id: gameId, eventId, event: { organizationId: ctx.orgId }, deletedAt: null },
-    include: { sets: true, event: true },
+    include: {
+      sets: true,
+      event: true,
+      homeTeam: { select: { id: true } },
+      awayTeam: { select: { id: true } },
+    },
   });
   if (!game) return NextResponse.json({ error: "Game not found" }, { status: 404 });
 
@@ -121,12 +128,36 @@ export async function PUT(req: Request, { params }: RouteParams) {
         where: { id: gameId },
         data: { status: "COMPLETED" },
       });
+
+      // Advance winner/loser to next bracket games (no-op for league games)
+      const winnerTeamId =
+        homeSetWins >= setsToWin ? game.homeTeamId! : game.awayTeamId!;
+      const loserTeamId =
+        homeSetWins >= setsToWin ? game.awayTeamId : game.homeTeamId;
+      await advanceBracketTeams(tx, game, winnerTeamId, loserTeamId);
     } else if (game.status === "SCHEDULED") {
       await tx.game.update({
         where: { id: gameId },
         data: { status: "IN_PROGRESS" },
       });
     }
+  });
+
+  // Log activity (fire-and-forget, don't block response)
+  void logActivity({
+    organizationId: ctx.orgId,
+    userId: ctx.userId,
+    action: existingSet ? "SCORE_UPDATED" : "SCORE_ENTERED",
+    entityType: "GAME",
+    entityId: gameId,
+    metadata: {
+      setNumber,
+      homeScore: body.homeScore,
+      awayScore: body.awayScore,
+      ...(existingSet
+        ? { previousHomeScore: existingSet.homeScore, previousAwayScore: existingSet.awayScore }
+        : {}),
+    },
   });
 
   return NextResponse.json({ ok: true });
