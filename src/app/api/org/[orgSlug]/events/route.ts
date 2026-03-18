@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { checkEventLimit } from "@/lib/plan-limits";
 import type { EventType, EventVisibility, RefundPolicy, SeedingType, BracketType } from "@/generated/prisma/enums";
 
 interface RouteParams {
@@ -73,6 +74,11 @@ export async function POST(req: Request, { params }: RouteParams) {
   }
   if (!body.divisions?.length) {
     return NextResponse.json({ error: "At least one division is required" }, { status: 400 });
+  }
+
+  const limitError = await checkEventLimit(ctx.orgId);
+  if (limitError) {
+    return NextResponse.json({ error: limitError, limitReached: true }, { status: 403 });
   }
 
   const event = await prisma.$transaction(async (tx) => {

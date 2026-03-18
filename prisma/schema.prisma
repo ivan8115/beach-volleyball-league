@@ -180,6 +180,7 @@ model User {
   playerAvailabilities PlayerAvailability[]
   customFieldResponses CustomFieldResponse[]
   scoreChanges         GameScoreHistory[]
+  gameStats            GameStat[]
 }
 
 model Organization {
@@ -460,6 +461,7 @@ model Team {
   forfeitedGames      Game[]               @relation("ForfeitingTeam")
   payments            Payment[]
   scheduleConstraints ScheduleConstraint[]
+  gameStats           GameStat[]
 }
 
 model TeamMember {
@@ -580,6 +582,7 @@ model Game {
   loserNextGame Game?     @relation("LoserNextGame", fields: [loserNextGameId], references: [id])
   loserNextGameOf Game[]  @relation("LoserNextGame")
   sets          GameSet[]
+  stats         GameStat[]
 }
 
 model GameSet {
@@ -608,6 +611,26 @@ model GameScoreHistory {
 
   gameSet   GameSet @relation(fields: [gameSetId], references: [id])
   changedBy User    @relation(fields: [changedById], references: [id])
+}
+
+model GameStat {
+  id        String   @id @default(cuid())
+  gameId    String
+  userId    String
+  teamId    String
+  kills     Int      @default(0)
+  aces      Int      @default(0)
+  digs      Int      @default(0)
+  blocks    Int      @default(0)
+  errors    Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  game Game @relation(fields: [gameId], references: [id])
+  user User @relation(fields: [userId], references: [id])
+  team Team @relation(fields: [teamId], references: [id])
+
+  @@unique([gameId, userId])
 }
 
 model Payment {

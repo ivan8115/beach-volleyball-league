@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background -->
+  <rect width="512" height="512" rx="80" fill="#0f172a"/>
+  <!-- Volleyball circle -->
+  <circle cx="256" cy="256" r="160" fill="none" stroke="#f8fafc" stroke-width="16"/>
+  <!-- Volleyball panels -->
+  <path d="M256 96 A160 160 0 0 1 380 182" fill="none" stroke="#f8fafc" stroke-width="14"/>
+  <path d="M380 182 A160 160 0 0 1 256 416" fill="none" stroke="#f8fafc" stroke-width="14"/>
+  <path d="M256 416 A160 160 0 0 1 132 182" fill="none" stroke="#f8fafc" stroke-width="14"/>
+  <path d="M132 182 A160 160 0 0 1 256 96" fill="none" stroke="#f8fafc" stroke-width="14"/>
+  <!-- Net line -->
+  <line x1="96" y1="256" x2="416" y2="256" stroke="#f8fafc" stroke-width="10" stroke-dasharray="20,12"/>
+</svg>

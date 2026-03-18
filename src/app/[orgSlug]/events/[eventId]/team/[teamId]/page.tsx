@@ -65,6 +65,32 @@ export default async function PublicTeamPage({ params }: PageProps) {
     }
   }
 
+  // Fetch aggregated stats for this team
+  const rawStats = await prisma.gameStat.findMany({
+    where: {
+      teamId,
+      game: { eventId, event: { organizationId: org.id }, deletedAt: null },
+    },
+    select: {
+      userId: true,
+      kills: true,
+      aces: true,
+      digs: true,
+      blocks: true,
+      errors: true,
+      user: { select: { id: true, name: true } },
+    },
+  });
+  const statsByPlayer: Record<string, { name: string; kills: number; aces: number; digs: number; blocks: number; errors: number; games: number }> = {};
+  for (const s of rawStats) {
+    if (!statsByPlayer[s.userId]) {
+      statsByPlayer[s.userId] = { name: s.user.name, kills: 0, aces: 0, digs: 0, blocks: 0, errors: 0, games: 0 };
+    }
+    const p = statsByPlayer[s.userId];
+    p.kills += s.kills; p.aces += s.aces; p.digs += s.digs; p.blocks += s.blocks; p.errors += s.errors; p.games += 1;
+  }
+  const playerStats = Object.values(statsByPlayer).sort((a, b) => b.kills - a.kills);
+
   return (
     <div className="min-h-screen bg-background">
       <div className="mx-auto max-w-2xl px-4 py-10 space-y-6">
@@ -113,6 +139,41 @@ export default async function PublicTeamPage({ params }: PageProps) {
             ))}
           </div>
         </div>
+
+        {/* Player Stats */}
+        {playerStats.length > 0 && (
+          <div className="space-y-3">
+            <h2 className="font-semibold">Player Stats</h2>
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-sm">
+                <thead className="bg-muted text-muted-foreground">
+                  <tr>
+                    <th className="px-4 py-2 text-left font-medium">Player</th>
+                    <th className="px-3 py-2 text-center font-medium" title="Games">GP</th>
+                    <th className="px-3 py-2 text-center font-medium" title="Kills">K</th>
+                    <th className="px-3 py-2 text-center font-medium" title="Aces">A</th>
+                    <th className="px-3 py-2 text-center font-medium" title="Digs">D</th>
+                    <th className="px-3 py-2 text-center font-medium" title="Blocks">B</th>
+                    <th className="px-3 py-2 text-center font-medium" title="Errors">E</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {playerStats.map((p) => (
+                    <tr key={p.name} className="hover:bg-muted/30">
+                      <td className="px-4 py-2 font-medium">{p.name}</td>
+                      <td className="px-3 py-2 text-center text-muted-foreground">{p.games}</td>
+                      <td className="px-3 py-2 text-center">{p.kills}</td>
+                      <td className="px-3 py-2 text-center">{p.aces}</td>
+                      <td className="px-3 py-2 text-center">{p.digs}</td>
+                      <td className="px-3 py-2 text-center">{p.blocks}</td>
+                      <td className="px-3 py-2 text-center text-red-600">{p.errors}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {canJoin && (
           <div className="rounded-lg border p-4 space-y-2">

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
 import { OrgRole } from "@/generated/prisma/enums";
+import { checkAdminLimit } from "@/lib/plan-limits";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; memberId: string }>;
@@ -59,6 +60,14 @@ export async function PATCH(request: Request, { params }: RouteParams) {
   // Prevent admin from demoting themselves
   if (member.userId === ctx.requesterId && role !== "ADMIN") {
     return NextResponse.json({ error: "You cannot change your own role" }, { status: 400 });
+  }
+
+  // Check admin limit when promoting to ADMIN
+  if (role === "ADMIN" && member.role !== "ADMIN") {
+    const limitError = await checkAdminLimit(ctx.orgId);
+    if (limitError) {
+      return NextResponse.json({ error: limitError, limitReached: true }, { status: 403 });
+    }
   }
 
   await prisma.organizationMember.update({

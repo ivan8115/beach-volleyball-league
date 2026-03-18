@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
+import { GameStatsEntry } from "@/components/stats/game-stats-entry";
 
 const DAYS = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"] as const;
 type DayOfWeek = (typeof DAYS)[number];
@@ -475,6 +476,13 @@ export default function AdminSchedulePage() {
                               );
                             })}
                           </div>
+                          <GameStatsEntry
+                            orgSlug={orgSlug}
+                            eventId={eventId}
+                            gameId={game.id}
+                            homeTeamId={game.homeTeam?.id ?? null}
+                            awayTeamId={game.awayTeam?.id ?? null}
+                          />
                         </td>
                       </tr>
                     )}

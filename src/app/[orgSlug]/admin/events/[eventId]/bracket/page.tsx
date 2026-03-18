@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { GameStatsEntry } from "@/components/stats/game-stats-entry";
 
 interface GameSet {
   setNumber: number;
@@ -191,6 +192,13 @@ export default function AdminBracketPage() {
             </div>
           );
         })}
+        <GameStatsEntry
+          orgSlug={orgSlug}
+          eventId={eventId}
+          gameId={game.id}
+          homeTeamId={game.homeTeam?.id ?? null}
+          awayTeamId={game.awayTeam?.id ?? null}
+        />
       </div>
     );
   }
