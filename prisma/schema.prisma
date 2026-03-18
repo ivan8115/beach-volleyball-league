@@ -219,13 +219,14 @@ model OrganizationMember {
 }
 
 model Plan {
-  id           String  @id @default(cuid())
-  name         String
-  monthlyPrice Decimal
-  maxEvents    Int
-  maxTeams     Int
-  maxAdmins    Int
-  features     Json
+  id             String  @id @default(cuid())
+  name           String
+  monthlyPrice   Decimal
+  maxEvents      Int
+  maxTeams       Int
+  maxAdmins      Int
+  features       Json
+  stripePriceId  String?
 
   subscriptions Subscription[]
 }
