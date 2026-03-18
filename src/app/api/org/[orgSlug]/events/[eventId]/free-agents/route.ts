@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { notifyFreeAgentConfirmed } from "@/lib/notifications";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string }>;
@@ -72,6 +73,13 @@ export async function POST(req: Request, { params }: RouteParams) {
       notes: body.notes?.trim() ?? "",
       status: "AVAILABLE",
     },
+  });
+
+  void notifyFreeAgentConfirmed({
+    userId: ctx.userId,
+    orgId: ctx.orgId,
+    orgSlug,
+    eventId,
   });
 
   return NextResponse.json(freeAgent, { status: 201 });

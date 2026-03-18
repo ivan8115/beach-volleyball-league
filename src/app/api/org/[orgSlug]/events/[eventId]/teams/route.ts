@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { notifyRegistrationConfirmed } from "@/lib/notifications";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string }>;
@@ -116,6 +117,16 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
 
     return created;
+  });
+
+  void notifyRegistrationConfirmed({
+    userId: ctx.userId,
+    orgId: ctx.orgId,
+    orgSlug,
+    eventId,
+    teamId: team.id,
+    teamName: team.name,
+    role: "CAPTAIN",
   });
 
   return NextResponse.json(

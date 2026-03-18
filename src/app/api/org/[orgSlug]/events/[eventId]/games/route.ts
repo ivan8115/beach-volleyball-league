@@ -10,6 +10,7 @@ import {
   type BracketGame,
 } from "@/lib/bracket-generator";
 import { advanceBracketTeams } from "@/lib/bracket-advancement";
+import { notifySchedulePublished, notifyBracketPublished } from "@/lib/notifications";
 import type { BracketSide } from "@/generated/prisma/enums";
 
 interface RouteParams {
@@ -66,13 +67,13 @@ export async function POST(req: Request, { params }: RouteParams) {
   };
 
   if (body.action === "GENERATE_LEAGUE") {
-    return handleGenerateLeague(event, body.divisionId, body.force ?? false, ctx.orgId);
+    return handleGenerateLeague(event, body.divisionId, body.force ?? false, ctx.orgId, orgSlug);
   }
   if (body.action === "GENERATE_BRACKET") {
-    return handleGenerateBracket(event, body.divisionId, body.force ?? false, ctx.orgId);
+    return handleGenerateBracket(event, body.divisionId, body.force ?? false, ctx.orgId, orgSlug);
   }
   if (body.action === "GENERATE_POOL_PLAY") {
-    return handleGeneratePoolPlay(event, body.force ?? false, ctx.orgId);
+    return handleGeneratePoolPlay(event, body.force ?? false, ctx.orgId, orgSlug);
   }
 
   return NextResponse.json({ error: "Invalid action" }, { status: 400 });
@@ -84,7 +85,8 @@ async function handleGenerateLeague(
   event: { id: string; type: string; startDate: Date | null; weeks: number | null },
   divisionId: string | undefined,
   force: boolean,
-  _orgId: string,
+  orgId: string,
+  orgSlug: string,
 ) {
   if (event.type !== "LEAGUE") {
     return NextResponse.json({ error: "Event is not a league" }, { status: 400 });
@@ -193,6 +195,8 @@ async function handleGenerateLeague(
     });
   });
 
+  void notifySchedulePublished({ orgId, orgSlug, eventId: event.id, gameCount: games.length });
+
   return NextResponse.json({ created: games.length }, { status: 201 });
 }
 
@@ -209,6 +213,7 @@ async function handleGenerateBracket(
   divisionId: string | undefined,
   force: boolean,
   orgId: string,
+  orgSlug: string,
 ) {
   if (event.type !== "TOURNAMENT") {
     return NextResponse.json({ error: "Event is not a tournament" }, { status: 400 });
@@ -358,6 +363,8 @@ async function handleGenerateBracket(
     });
   });
 
+  void notifyBracketPublished({ orgId, orgSlug, eventId: event.id });
+
   return NextResponse.json({ created: bracketGames.length }, { status: 201 });
 }
 
@@ -371,7 +378,8 @@ async function handleGeneratePoolPlay(
     tournamentStartDate: Date | null;
   },
   force: boolean,
-  _orgId: string,
+  orgId: string,
+  orgSlug: string,
 ) {
   if (event.type !== "TOURNAMENT") {
     return NextResponse.json({ error: "Event is not a tournament" }, { status: 400 });
@@ -466,6 +474,8 @@ async function handleGeneratePoolPlay(
       data: { status: "ACTIVE" },
     });
   });
+
+  void notifySchedulePublished({ orgId, orgSlug, eventId: event.id, gameCount: poolGames.length });
 
   return NextResponse.json({ created: poolGames.length }, { status: 201 });
 }

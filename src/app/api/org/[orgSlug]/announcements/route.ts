@@ -3,6 +3,7 @@ import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
 import type { AnnouncementTargetType } from "@/generated/prisma/enums";
 import { logActivity } from "@/lib/activity-log";
+import { notifyAnnouncementPosted } from "@/lib/notifications";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string }>;
@@ -91,6 +92,15 @@ export async function POST(req: Request, { params }: RouteParams) {
     entityType: "ANNOUNCEMENT",
     entityId: announcement.id,
     metadata: { title: announcement.title, targetType: body.targetType, eventId: body.eventId ?? null },
+  });
+
+  void notifyAnnouncementPosted({
+    orgId: ctx.orgId,
+    orgSlug,
+    eventId: body.eventId,
+    title: announcement.title,
+    body: announcement.body,
+    targetType: body.targetType,
   });
 
   return NextResponse.json(announcement, { status: 201 });
