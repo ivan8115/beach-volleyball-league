@@ -1,5 +1,5 @@
 /** Shared HTML wrapper for all emails */
-function layout(body: string): string {
+export function layout(body: string): string {
   return `<!DOCTYPE html>
 <html lang="en">
 <head>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { promoteFromWaitlist } from "@/lib/waitlist";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string; teamId: string }>;
@@ -72,7 +73,14 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     if (body.adminNotes !== undefined) data.adminNotes = body.adminNotes;
   }
 
+  const wasRegistered = team.registrationStatus === "REGISTERED" || team.registrationStatus === "PENDING_PAYMENT";
   const updated = await prisma.team.update({ where: { id: teamId }, data });
+
+  // If team just withdrew from a registered spot, promote next from waitlist
+  if (body.registrationStatus === "WITHDRAWN" && wasRegistered) {
+    void promoteFromWaitlist(eventId, orgSlug);
+  }
+
   return NextResponse.json(updated);
 }
 
@@ -91,6 +99,14 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   });
   if (!team) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
+  const wasRegistered = team.registrationStatus === "REGISTERED" || team.registrationStatus === "PENDING_PAYMENT";
+
   await prisma.team.update({ where: { id: teamId }, data: { deletedAt: new Date() } });
+
+  // Free up the spot — promote next team from waitlist
+  if (wasRegistered) {
+    void promoteFromWaitlist(eventId, orgSlug);
+  }
+
   return NextResponse.json({ success: true });
 }
