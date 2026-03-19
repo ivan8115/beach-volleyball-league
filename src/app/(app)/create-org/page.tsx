@@ -7,6 +7,40 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+
+const COMMON_TIMEZONES = [
+  { label: "Eastern Time (US & Canada)", value: "America/New_York" },
+  { label: "Central Time (US & Canada)", value: "America/Chicago" },
+  { label: "Mountain Time (US & Canada)", value: "America/Denver" },
+  { label: "Pacific Time (US & Canada)", value: "America/Los_Angeles" },
+  { label: "Alaska", value: "America/Anchorage" },
+  { label: "Hawaii", value: "Pacific/Honolulu" },
+  { label: "Atlantic Time (Canada)", value: "America/Halifax" },
+  { label: "Toronto / Montreal", value: "America/Toronto" },
+  { label: "Vancouver", value: "America/Vancouver" },
+  { label: "Phoenix (no DST)", value: "America/Phoenix" },
+  { label: "London", value: "Europe/London" },
+  { label: "Paris / Berlin / Rome", value: "Europe/Paris" },
+  { label: "Helsinki / Kyiv", value: "Europe/Helsinki" },
+  { label: "Dubai", value: "Asia/Dubai" },
+  { label: "Singapore / Hong Kong", value: "Asia/Singapore" },
+  { label: "Tokyo / Seoul", value: "Asia/Tokyo" },
+  { label: "Sydney", value: "Australia/Sydney" },
+  { label: "Melbourne", value: "Australia/Melbourne" },
+  { label: "Auckland", value: "Pacific/Auckland" },
+  { label: "São Paulo", value: "America/Sao_Paulo" },
+  { label: "Mexico City", value: "America/Mexico_City" },
+  { label: "Bogotá / Lima", value: "America/Bogota" },
+  { label: "Buenos Aires", value: "America/Argentina/Buenos_Aires" },
+  { label: "UTC", value: "UTC" },
+];
 
 function slugify(value: string) {
   return value
@@ -20,9 +54,10 @@ export default function CreateOrgPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
-  const [timezone, setTimezone] = useState(
-    Intl.DateTimeFormat().resolvedOptions().timeZone ?? "America/New_York"
-  );
+  const detectedTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const defaultTz =
+    COMMON_TIMEZONES.find((t) => t.value === detectedTz)?.value ?? "America/New_York";
+  const [timezone, setTimezone] = useState(defaultTz);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -83,7 +118,10 @@ export default function CreateOrgPage() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="slug">URL slug</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="slug">URL slug</Label>
+                <span className="text-xs text-muted-foreground">Auto-generated from name</span>
+              </div>
               <div className="flex items-center gap-1 rounded-md border bg-muted/40 px-3 py-2 text-sm">
                 <span className="text-muted-foreground">beachvbl.com/</span>
                 <input
@@ -99,22 +137,24 @@ export default function CreateOrgPage() {
                 />
               </div>
               <p className="text-xs text-muted-foreground">
-                Lowercase letters, numbers, and hyphens only.
+                Lowercase letters, numbers, and hyphens only. Cannot be changed later.
               </p>
             </div>
 
             <div className="space-y-2">
               <Label htmlFor="timezone">Timezone</Label>
-              <Input
-                id="timezone"
-                value={timezone}
-                onChange={(e) => setTimezone(e.target.value)}
-                placeholder="America/New_York"
-                required
-              />
-              <p className="text-xs text-muted-foreground">
-                e.g. America/New_York, America/Los_Angeles, America/Chicago
-              </p>
+              <Select value={timezone} onValueChange={setTimezone}>
+                <SelectTrigger id="timezone">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {COMMON_TIMEZONES.map((tz) => (
+                    <SelectItem key={tz.value} value={tz.value}>
+                      {tz.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
 
             <div className="flex gap-3">

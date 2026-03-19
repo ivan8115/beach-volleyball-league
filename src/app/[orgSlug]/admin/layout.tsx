@@ -2,6 +2,7 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { AdminNavLinks } from "@/components/admin-nav-links";
 
 interface AdminLayoutProps {
   children: React.ReactNode;
@@ -69,73 +70,8 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
             </Link>
             <span className="font-semibold">Admin</span>
           </div>
-          <div className="flex items-center gap-1">
-            <Link
-              href={`/${orgSlug}/admin`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Overview
-            </Link>
-            <Link
-              href={`/${orgSlug}/admin/events`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Events
-            </Link>
-            <Link
-              href={`/${orgSlug}/admin/venues`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Venues
-            </Link>
-            <Link
-              href={`/${orgSlug}/admin/members`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Members
-            </Link>
-            <Link
-              href={`/${orgSlug}/admin/announcements`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Announcements
-            </Link>
-            <Link
-              href={`/${orgSlug}/admin/activity`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Activity
-            </Link>
-            <Link
-              href={`/${orgSlug}/admin/leaderboard`}
-              className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-            >
-              Leaderboard
-            </Link>
-            {membership.role === "ADMIN" && (
-              <Link
-                href={`/${orgSlug}/admin/analytics`}
-                className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-              >
-                Analytics
-              </Link>
-            )}
-            {membership.role === "ADMIN" && (
-              <>
-                <Link
-                  href={`/${orgSlug}/admin/billing`}
-                  className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-                >
-                  Billing
-                </Link>
-                <Link
-                  href={`/${orgSlug}/admin/settings`}
-                  className="rounded-md px-3 py-1.5 text-sm hover:bg-muted"
-                >
-                  Settings
-                </Link>
-              </>
-            )}
+          <div className="flex items-center gap-1 flex-wrap">
+            <AdminNavLinks orgSlug={orgSlug} isAdmin={membership.role === "ADMIN"} />
           </div>
         </div>
       </nav>

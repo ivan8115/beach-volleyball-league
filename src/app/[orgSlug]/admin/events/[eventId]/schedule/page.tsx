@@ -200,6 +200,22 @@ export default function AdminSchedulePage() {
     void fetchAll();
   }
 
+  const GAME_STATUS_LABELS: Record<string, string> = {
+    SCHEDULED: "Scheduled",
+    IN_PROGRESS: "Live",
+    COMPLETED: "Final",
+    CANCELLED: "Cancelled",
+    FORFEITED: "Forfeited",
+  };
+
+  const GAME_STATUS_COLORS: Record<string, string> = {
+    SCHEDULED: "bg-muted text-muted-foreground",
+    IN_PROGRESS: "bg-blue-100 text-blue-700",
+    COMPLETED: "bg-green-100 text-green-700",
+    CANCELLED: "bg-gray-100 text-gray-500",
+    FORFEITED: "bg-orange-100 text-orange-700",
+  };
+
   const weeks = [...new Set(games.filter((g) => g.week).map((g) => g.week!))].sort(
     (a, b) => a - b,
   );
@@ -375,15 +391,9 @@ export default function AdminSchedulePage() {
                       <td className="px-3 py-2 font-mono">{scoreStr}</td>
                       <td className="px-3 py-2">
                         <span
-                          className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${
-                            game.status === "COMPLETED"
-                              ? "bg-green-100 text-green-700"
-                              : game.status === "IN_PROGRESS"
-                                ? "bg-blue-100 text-blue-700"
-                                : "bg-muted text-muted-foreground"
-                          }`}
+                          className={`inline-block rounded px-1.5 py-0.5 text-xs font-medium ${GAME_STATUS_COLORS[game.status] ?? "bg-muted text-muted-foreground"}`}
                         >
-                          {game.status}
+                          {GAME_STATUS_LABELS[game.status] ?? game.status}
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">

@@ -79,7 +79,16 @@ export default function AdminTeamDetailPage() {
     setAdding(false);
   }
 
+  const REGISTRATION_STATUS_LABELS: Record<string, string> = {
+    REGISTERED: "Registered",
+    WAITLISTED: "Waitlisted",
+    PENDING_PAYMENT: "Pending payment",
+    WITHDRAWN: "Withdrawn",
+  };
+
   async function handleRemoveMember(memberId: string) {
+    const member = team?.members.find((m) => m.id === memberId);
+    if (!confirm(`Remove ${member?.user.name ?? "this player"} from the team?`)) return;
     const res = await fetch(
       `/api/org/${orgSlug}/events/${eventId}/teams/${teamId}/members/${memberId}`,
       { method: "DELETE" },
@@ -118,8 +127,8 @@ export default function AdminTeamDetailPage() {
               value={editStatus}
               onChange={(e) => setEditStatus(e.target.value)}
             >
-              {["REGISTERED", "WAITLISTED", "PENDING_PAYMENT", "WITHDRAWN"].map((s) => (
-                <option key={s} value={s}>{s}</option>
+              {Object.entries(REGISTRATION_STATUS_LABELS).map(([value, label]) => (
+                <option key={value} value={value}>{label}</option>
               ))}
             </select>
           </div>
@@ -183,15 +192,19 @@ export default function AdminTeamDetailPage() {
                     <td className="px-4 py-3 font-medium">{m.user.name}</td>
                     <td className="px-4 py-3 text-muted-foreground capitalize">{m.role.toLowerCase()}</td>
                     <td className="px-4 py-3 text-muted-foreground">{m.jerseyNumber ?? "—"}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{m.registrationStatus}</td>
+                    <td className="px-4 py-3 text-muted-foreground">
+                      {REGISTRATION_STATUS_LABELS[m.registrationStatus] ?? m.registrationStatus}
+                    </td>
                     <td className="px-4 py-3">
-                      {m.role !== "CAPTAIN" && (
+                      {m.role !== "CAPTAIN" ? (
                         <button
                           onClick={() => handleRemoveMember(m.id)}
                           className="text-xs text-destructive hover:underline"
                         >
                           Remove
                         </button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground" title="Transfer captain role before removing">Captain</span>
                       )}
                     </td>
                   </tr>

@@ -225,22 +225,28 @@ export default function RegisterPage() {
 
   if (done) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="text-5xl">✓</div>
-          <h2 className="text-xl font-bold">Registration complete!</h2>
-          <div className="space-x-3">
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="text-center space-y-5 max-w-sm">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 text-3xl text-green-600">
+            ✓
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">You&apos;re registered!</h2>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Your spot has been confirmed for {event.name}.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2">
             {doneTeamId && (
-              <Link
-                href={`/${orgSlug}/events/${eventId}/team/${doneTeamId}`}
-                className="text-sm text-primary hover:underline"
-              >
-                View team
-              </Link>
+              <Button asChild>
+                <Link href={`/${orgSlug}/events/${eventId}/team/${doneTeamId}`}>
+                  View your team
+                </Link>
+              </Button>
             )}
-            <Link href={`/${orgSlug}/events/${eventId}`} className="text-sm text-muted-foreground hover:underline">
-              Back to event
-            </Link>
+            <Button asChild variant="outline">
+              <Link href={`/${orgSlug}/events/${eventId}`}>Back to event</Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -338,12 +344,12 @@ export default function RegisterPage() {
         {flow === "join" && (
           <div className="space-y-4 rounded-lg border p-6">
             <h2 className="font-semibold">Join a team</h2>
-            {!isLeague && (
-              <p className="text-sm text-muted-foreground">
-                For tournaments, ask your captain to add you to the team.
-              </p>
-            )}
-            {isLeague && (
+            {!isLeague ? (
+              <div className="rounded-md bg-muted/60 px-4 py-3 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground mb-1">Tournaments use captain-managed rosters</p>
+                <p>Ask your team captain to add you from the team management page.</p>
+              </div>
+            ) : (
               <>
                 {fee > 0 && (
                   <p className="text-sm text-muted-foreground">

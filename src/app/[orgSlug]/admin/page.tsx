@@ -92,18 +92,74 @@ export default async function AdminOverviewPage({ params }: AdminOverviewProps) 
         </Card>
       </div>
 
+      {org.events.length === 0 && org._count.members <= 1 && (
+        <div className="mb-8 rounded-lg border border-dashed p-6">
+          <h2 className="font-semibold mb-1">Get started</h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            Here&apos;s how to set up your first league or tournament:
+          </p>
+          <ol className="space-y-3 text-sm">
+            <li className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">1</span>
+              <div>
+                <span className="font-medium">Add a venue & courts</span>
+                <span className="text-muted-foreground"> — </span>
+                <Link href={`/${orgSlug}/admin/venues`} className="text-primary hover:underline">
+                  Go to Venues
+                </Link>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground text-xs font-bold">2</span>
+              <div>
+                <span className="font-medium">Create an event</span>
+                <span className="text-muted-foreground"> — </span>
+                <Link href={`/${orgSlug}/admin/events`} className="text-primary hover:underline">
+                  Go to Events
+                </Link>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold">3</span>
+              <div>
+                <span className="font-medium">Share your join code</span>
+                <span className="text-muted-foreground"> — players join your org with the code above, then register for events</span>
+              </div>
+            </li>
+            <li className="flex items-start gap-3">
+              <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground text-xs font-bold">4</span>
+              <div>
+                <span className="font-medium">Generate the schedule or bracket</span>
+                <span className="text-muted-foreground"> — once teams have registered</span>
+              </div>
+            </li>
+          </ol>
+        </div>
+      )}
+
       <div>
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-lg font-semibold">Recent events</h2>
+          {org.events.length > 0 && (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/${orgSlug}/admin/events`}>All events</Link>
+            </Button>
+          )}
         </div>
         {org.events.length === 0 ? (
-          <p className="text-muted-foreground">No events yet.</p>
+          <div className="flex items-center justify-between rounded-lg border border-dashed p-4">
+            <p className="text-sm text-muted-foreground">No events yet.</p>
+            <Button asChild size="sm">
+              <Link href={`/${orgSlug}/admin/events`}>Create event</Link>
+            </Button>
+          </div>
         ) : (
           <div className="space-y-2">
             {org.events.map((event) => (
-              <div
+              <Link
                 key={event.id}
-                className="flex items-center justify-between rounded-lg border p-3"
+                href={`/${orgSlug}/admin/events/${event.id}/teams`}
+                className="flex items-center justify-between rounded-lg border p-3 hover:bg-muted/40 transition-colors"
               >
                 <div>
                   <p className="font-medium">{event.name}</p>
@@ -111,8 +167,8 @@ export default async function AdminOverviewPage({ params }: AdminOverviewProps) 
                     {event.type === "LEAGUE" ? "League" : "Tournament"}
                   </p>
                 </div>
-                <Badge variant="outline">{event.status.toLowerCase()}</Badge>
-              </div>
+                <Badge variant="outline" className="capitalize">{event.status.toLowerCase().replace("_", " ")}</Badge>
+              </Link>
             ))}
           </div>
         )}

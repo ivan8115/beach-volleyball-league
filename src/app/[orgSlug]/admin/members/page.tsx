@@ -55,6 +55,14 @@ export default function AdminMembersPage() {
   }, [orgSlug]);
 
   async function handleRoleChange(memberId: string, newRole: "ADMIN" | "SCORER" | "MEMBER") {
+    const member = members.find((m) => m.id === memberId);
+    if (!member) return;
+
+    // Require confirmation when removing admin privileges
+    if (member.role === "ADMIN" && newRole !== "ADMIN") {
+      if (!confirm(`Remove admin access from ${member.user.name}? They will become a ${newRole.toLowerCase()}.`)) return;
+    }
+
     const res = await fetch(`/api/org/${orgSlug}/members/${memberId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -69,7 +77,9 @@ export default function AdminMembersPage() {
   }
 
   async function handleRemove(memberId: string) {
-    if (!confirm("Remove this member from the organization?")) return;
+    const member = members.find((m) => m.id === memberId);
+    const name = member?.user.name ?? "this member";
+    if (!confirm(`Remove ${name} from the organization? This cannot be undone.`)) return;
 
     const res = await fetch(`/api/org/${orgSlug}/members/${memberId}`, {
       method: "DELETE",

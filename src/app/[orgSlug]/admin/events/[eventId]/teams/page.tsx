@@ -81,6 +81,13 @@ export default function AdminTeamsPage() {
     WITHDRAWN: "bg-gray-100 text-gray-600",
   };
 
+  const statusLabels: Record<string, string> = {
+    REGISTERED: "Registered",
+    WAITLISTED: "Waitlisted",
+    PENDING_PAYMENT: "Pending payment",
+    WITHDRAWN: "Withdrawn",
+  };
+
   if (loading) return <p className="text-muted-foreground">Loading…</p>;
 
   return (
@@ -157,7 +164,7 @@ export default function AdminTeamsPage() {
                   </td>
                   <td className="px-4 py-3">
                     <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${statusColors[team.registrationStatus] ?? ""}`}>
-                      {team.registrationStatus}
+                      {statusLabels[team.registrationStatus] ?? team.registrationStatus}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">{team._count.members}</td>

@@ -21,6 +21,10 @@ function LoginForm() {
     errorParam === "auth_failed" ? "Authentication failed. Please try again." : null
   );
   const [loading, setLoading] = useState(false);
+  const [showReset, setShowReset] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [resetSent, setResetSent] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const supabase = createClient();
 
@@ -41,6 +45,16 @@ function LoginForm() {
     router.refresh();
   }
 
+  async function handleResetPassword(e: React.FormEvent) {
+    e.preventDefault();
+    setResetLoading(true);
+    await supabase.auth.resetPasswordForEmail(resetEmail, {
+      redirectTo: `${window.location.origin}/auth/callback?next=/profile`,
+    });
+    setResetLoading(false);
+    setResetSent(true);
+  }
+
   async function handleGoogleLogin() {
     setError(null);
     const { error } = await supabase.auth.signInWithOAuth({
@@ -50,6 +64,57 @@ function LoginForm() {
       },
     });
     if (error) setError(error.message);
+  }
+
+  if (showReset) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle className="text-2xl">Reset password</CardTitle>
+          <CardDescription>
+            Enter your email and we&apos;ll send you a reset link.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {resetSent ? (
+            <div className="space-y-4">
+              <div className="rounded-md bg-green-50 px-4 py-3 text-sm text-green-700">
+                Check your email for a password reset link.
+              </div>
+              <Button variant="outline" className="w-full" onClick={() => setShowReset(false)}>
+                Back to sign in
+              </Button>
+            </div>
+          ) : (
+            <form onSubmit={handleResetPassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Email</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="you@example.com"
+                  value={resetEmail}
+                  onChange={(e) => setResetEmail(e.target.value)}
+                  required
+                  autoFocus
+                />
+              </div>
+              <Button type="submit" className="w-full" disabled={resetLoading}>
+                {resetLoading ? "Sending…" : "Send reset link"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                className="w-full"
+                onClick={() => setShowReset(false)}
+              >
+                Back to sign in
+              </Button>
+            </form>
+          )}
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -115,7 +180,16 @@ function LoginForm() {
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password">Password</Label>
+              <button
+                type="button"
+                onClick={() => { setShowReset(true); setResetEmail(email); }}
+                className="text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+              >
+                Forgot password?
+              </button>
+            </div>
             <Input
               id="password"
               type="password"
