@@ -33,14 +33,14 @@ interface AnalyticsData {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  DRAFT: "#94a3b8",
-  REGISTRATION: "#60a5fa",
-  ACTIVE: "#34d399",
-  PLAYOFF: "#f59e0b",
-  COMPLETED: "#6366f1",
+  DRAFT:        "#B89070",
+  REGISTRATION: "#C84B31",
+  ACTIVE:       "#7A9E6F",
+  PLAYOFF:      "#E8A040",
+  COMPLETED:    "#8B6A4F",
 };
 
-const PIE_COLORS = ["#94a3b8", "#60a5fa", "#34d399", "#f59e0b", "#6366f1"];
+const PIE_COLORS = ["#B89070", "#C84B31", "#7A9E6F", "#E8A040", "#8B6A4F"];
 
 function KpiCard({ title, value }: { title: string; value: string }) {
   return (
@@ -136,8 +136,8 @@ export default function AnalyticsPage() {
                 <YAxis allowDecimals={false} />
                 <Tooltip />
                 <Legend verticalAlign="top" />
-                <Bar dataKey="Teams" fill="#60a5fa" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="Players" fill="#34d399" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Teams" fill="#C84B31" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Players" fill="#E8A040" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -160,7 +160,7 @@ export default function AnalyticsPage() {
                 <Line
                   type="monotone"
                   dataKey="amount"
-                  stroke="#6366f1"
+                  stroke="#C84B31"
                   strokeWidth={2}
                   dot={{ r: 3 }}
                   activeDot={{ r: 5 }}

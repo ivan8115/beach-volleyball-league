@@ -48,7 +48,7 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
           <p className="mt-2 text-muted-foreground">
             You don&apos;t have admin access to this organization.
           </p>
-          <Link href={`/${orgSlug}/dashboard`} className="mt-4 block text-blue-600 underline">
+          <Link href={`/${orgSlug}/dashboard`} className="mt-4 block text-primary underline">
             Go to dashboard
           </Link>
         </div>

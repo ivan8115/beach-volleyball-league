@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Barlow_Condensed, DM_Sans } from "next/font/google";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -10,6 +10,19 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const barlow = Barlow_Condensed({
+  weight: ["600", "700", "800"],
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-barlow",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-dm",
 });
 
 export const metadata: Metadata = {
@@ -42,7 +55,7 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${barlow.variable} ${dmSans.variable} antialiased`}
       >
         {children}
       </body>
