@@ -36,6 +36,7 @@ export default async function EventAdminLayout({ children, params }: EventAdminL
       : [{ href: `${base}/bracket`, label: "Bracket" }]),
     { href: `${base}/announcements`, label: "Announcements" },
     { href: `${base}/custom-fields`, label: "Custom fields" },
+    { href: `${base}/export`, label: "Export" },
   ];
 
   return (
