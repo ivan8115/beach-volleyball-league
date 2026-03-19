@@ -130,7 +130,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
       for (const d of body.divisions) {
         if (d.id) {
           await tx.division.update({
-            where: { id: d.id },
+            where: { id: d.id, eventId },  // C2: ensure division belongs to this event
             data: {
               name: d.name.trim(),
               bracketType: d.bracketType,

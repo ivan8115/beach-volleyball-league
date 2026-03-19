@@ -12,7 +12,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   const ctx = await getOrgContext(orgSlug, "MEMBER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const isAdmin = ctx.role === "ADMIN" || ctx.role === "SCORER";
+  const isAdmin = ctx.role === "ADMIN"; // C4: Scorers cannot manage roster members
 
   const member = await prisma.teamMember.findFirst({
     where: {
@@ -47,7 +47,7 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
   const ctx = await getOrgContext(orgSlug, "MEMBER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const isAdmin = ctx.role === "ADMIN" || ctx.role === "SCORER";
+  const isAdmin = ctx.role === "ADMIN"; // C4: Scorers cannot manage roster members
 
   const member = await prisma.teamMember.findFirst({
     where: {

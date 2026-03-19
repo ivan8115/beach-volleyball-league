@@ -70,7 +70,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     data: {
       userId: ctx.userId,
       eventId,
-      notes: body.notes?.trim() ?? "",
+      notes: body.notes?.trim().slice(0, 500) ?? "", // M5: cap notes length
       status: "AVAILABLE",
     },
   });

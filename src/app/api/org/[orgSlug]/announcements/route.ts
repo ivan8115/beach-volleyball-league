@@ -74,6 +74,23 @@ export async function POST(req: Request, { params }: RouteParams) {
     if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
   }
 
+  // M4: Validate targetId belongs to this org when targeting a division or team
+  if (body.targetId) {
+    if (body.targetType === "DIVISION") {
+      const division = await prisma.division.findFirst({
+        where: { id: body.targetId, event: { organizationId: ctx.orgId } },
+        select: { id: true },
+      });
+      if (!division) return NextResponse.json({ error: "Division not found" }, { status: 404 });
+    } else if (body.targetType === "TEAM") {
+      const team = await prisma.team.findFirst({
+        where: { id: body.targetId, event: { organizationId: ctx.orgId }, deletedAt: null },
+        select: { id: true },
+      });
+      if (!team) return NextResponse.json({ error: "Team not found" }, { status: 404 });
+    }
+  }
+
   const announcement = await prisma.announcement.create({
     data: {
       eventId: body.eventId ?? null,

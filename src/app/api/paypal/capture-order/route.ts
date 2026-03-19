@@ -80,7 +80,7 @@ export async function POST(req: Request) {
 
         const team = await tx.team.create({
           data: {
-            name: body.context.notes ?? "My Team",
+            name: (body.context.notes ?? "My Team").slice(0, 100), // cap team name length
             eventId: event.id,
             divisionId: body.context.divisionId ?? null,
             registrationStatus,
@@ -143,7 +143,7 @@ export async function POST(req: Request) {
           data: {
             userId: dbUser.id,
             eventId: event.id,
-            notes: body.context.notes?.trim() ?? "",
+            notes: body.context.notes?.trim().slice(0, 500) ?? "", // M5: cap notes length
             status: "AVAILABLE",
           },
         });

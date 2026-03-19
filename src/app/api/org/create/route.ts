@@ -29,6 +29,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  if (typeof name !== "string" || name.trim().length < 2 || name.trim().length > 100) {
+    return NextResponse.json({ error: "Name must be between 2 and 100 characters" }, { status: 400 });
+  }
+
   if (!/^[a-z0-9-]{2,50}$/.test(slug)) {
     return NextResponse.json({ error: "Invalid slug format" }, { status: 400 });
   }

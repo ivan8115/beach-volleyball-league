@@ -12,6 +12,8 @@ export async function GET(_req: Request, { params }: RouteParams) {
   const ctx = await getOrgContext(orgSlug, "MEMBER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const isAdmin = ctx.role === "ADMIN" || ctx.role === "SCORER";
+
   const team = await prisma.team.findFirst({
     where: {
       id: teamId,
@@ -19,11 +21,18 @@ export async function GET(_req: Request, { params }: RouteParams) {
       event: { organizationId: ctx.orgId },
       deletedAt: null,
     },
-    include: {
+    select: {
+      id: true, name: true, registrationStatus: true, divisionId: true,
+      createdAt: true, updatedAt: true,
+      // M3: only expose adminNotes to admins/scorers
+      ...(isAdmin ? { adminNotes: true } : {}),
       division: { select: { id: true, name: true } },
       members: {
         where: { deletedAt: null },
-        include: { user: { select: { id: true, name: true, avatarUrl: true } } },
+        select: {
+          id: true, role: true, jerseyNumber: true, registrationStatus: true, createdAt: true,
+          user: { select: { id: true, name: true, avatarUrl: true } },
+        },
         orderBy: [{ role: "asc" }, { createdAt: "asc" }],
       },
     },
@@ -38,7 +47,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
   const ctx = await getOrgContext(orgSlug, "MEMBER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const isAdmin = ctx.role === "ADMIN" || ctx.role === "SCORER";
+  const isAdmin = ctx.role === "ADMIN"; // C3: Scorers cannot manage team registration
 
   const team = await prisma.team.findFirst({
     where: {

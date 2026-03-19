@@ -13,7 +13,7 @@ export async function POST(req: Request, { params }: RouteParams) {
   const ctx = await getOrgContext(orgSlug, "MEMBER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const isAdmin = ctx.role === "ADMIN" || ctx.role === "SCORER";
+  const isAdmin = ctx.role === "ADMIN"; // C4: Scorers cannot add roster members
 
   const team = await prisma.team.findFirst({
     where: {

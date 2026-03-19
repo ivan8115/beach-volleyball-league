@@ -40,9 +40,21 @@ export async function POST(req: Request) {
 
   const event = await prisma.event.findFirst({
     where: { id: body.context.eventId, deletedAt: null },
-    select: { id: true, type: true },
+    select: { id: true, type: true, registrationFee: true, organizationId: true },
   });
   if (!event) return NextResponse.json({ error: "Event not found" }, { status: 404 });
+
+  // C1: Enforce server-side amount — never trust the client-supplied value
+  const expectedFee = event.registrationFee ?? 0;
+  if (body.amount !== expectedFee) {
+    return NextResponse.json({ error: "Invalid payment amount" }, { status: 400 });
+  }
+
+  // M2: Verify the user is a member of the event's org
+  const orgMembership = await prisma.organizationMember.findFirst({
+    where: { userId: dbUser.id, organizationId: event.organizationId },
+  });
+  if (!orgMembership) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const orderID = await createPaypalOrder(body.amount, body.description);
 
