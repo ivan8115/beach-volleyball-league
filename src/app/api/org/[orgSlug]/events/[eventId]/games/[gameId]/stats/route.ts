@@ -52,6 +52,43 @@ export async function PUT(req: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "Body must be an array of stat entries" }, { status: 400 });
   }
 
+  if (body.length === 0) {
+    return NextResponse.json([]);
+  }
+
+  // Validate each entry: required fields + non-negative integer stats
+  for (const entry of body) {
+    if (!entry.userId || !entry.teamId) {
+      return NextResponse.json({ error: "Each entry must have userId and teamId" }, { status: 400 });
+    }
+    for (const field of ["kills", "aces", "digs", "blocks", "errors"] as const) {
+      const val = entry[field];
+      if (val !== undefined && (typeof val !== "number" || val < 0 || !Number.isInteger(val))) {
+        return NextResponse.json({ error: `${field} must be a non-negative integer` }, { status: 400 });
+      }
+    }
+  }
+
+  // Verify every (userId, teamId) pair is a real member of that team in this event
+  const uniqueTeamIds = [...new Set(body.map((e) => e.teamId))];
+  const validMembers = await prisma.teamMember.findMany({
+    where: {
+      teamId: { in: uniqueTeamIds },
+      team: { eventId, event: { organizationId: ctx.orgId } },
+      deletedAt: null,
+    },
+    select: { userId: true, teamId: true },
+  });
+
+  const validSet = new Set(validMembers.map((m) => `${m.userId}:${m.teamId}`));
+  const invalid = body.find((e) => !validSet.has(`${e.userId}:${e.teamId}`));
+  if (invalid) {
+    return NextResponse.json(
+      { error: `User ${invalid.userId} is not a member of team ${invalid.teamId}` },
+      { status: 400 }
+    );
+  }
+
   // Upsert each stat entry
   const results = await prisma.$transaction(
     body.map((entry) =>

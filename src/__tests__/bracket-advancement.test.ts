@@ -188,7 +188,11 @@ describe("advanceBracketTeams", () => {
       });
     });
 
-    it("does NOT activate reset game when WB finalist (home team) wins grand final", async () => {
+    it("cancels (soft-deletes) reset game when WB finalist (home team) wins grand final", async () => {
+      const resetGameId = "game-reset";
+      mockTx.game.findFirst.mockResolvedValue({ id: resetGameId });
+      mockTx.game.update.mockResolvedValue({});
+
       const game = makeGame({
         bracketSide: "GRAND_FINAL",
         isBracketReset: false,
@@ -198,11 +202,16 @@ describe("advanceBracketTeams", () => {
         loserNextGameId: null,
       });
 
-      // WB finalist (home) wins — no reset needed
+      // WB finalist (home) wins — tournament over, cancel the unused reset game
       await advanceBracketTeams(tx, game, "team-wb", "team-lb");
 
-      expect(mockTx.game.findFirst).not.toHaveBeenCalled();
-      expect(mockTx.game.update).not.toHaveBeenCalled();
+      expect(mockTx.game.findFirst).toHaveBeenCalled();
+      expect(mockTx.game.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { id: resetGameId },
+          data: expect.objectContaining({ deletedAt: expect.any(Date) }),
+        })
+      );
     });
 
     it("does NOT activate reset when isBracketReset is already true (this IS the reset game)", async () => {

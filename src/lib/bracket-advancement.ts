@@ -48,14 +48,8 @@ export async function advanceBracketTeams(
     await fillTeamSlot(tx, game.loserNextGameId, loserTeamId);
   }
 
-  // Grand final reset: LB finalist (away slot) beats WB finalist (home slot)
-  // → activate the pre-created reset game with the same two teams
-  if (
-    game.bracketSide === "GRAND_FINAL" &&
-    !game.isBracketReset &&
-    game.awayTeamId &&
-    winnerTeamId === game.awayTeamId
-  ) {
+  // Grand final reset logic (double elim only, non-reset GF game)
+  if (game.bracketSide === "GRAND_FINAL" && !game.isBracketReset) {
     const resetGame = await tx.game.findFirst({
       where: {
         eventId: game.eventId,
@@ -66,15 +60,24 @@ export async function advanceBracketTeams(
     });
 
     if (resetGame) {
-      // WB finalist (loser of GF) plays home; LB finalist (winner of GF) plays away
-      await tx.game.update({
-        where: { id: resetGame.id },
-        data: {
-          homeTeamId: loserTeamId, // WB team
-          awayTeamId: winnerTeamId, // LB team
-          status: "SCHEDULED",
-        },
-      });
+      if (game.awayTeamId && winnerTeamId === game.awayTeamId) {
+        // LB finalist (away) won → both teams now have 1 loss, play the reset game
+        // WB finalist (loser here) is home; LB finalist (winner here) is away
+        await tx.game.update({
+          where: { id: resetGame.id },
+          data: {
+            homeTeamId: loserTeamId,
+            awayTeamId: winnerTeamId,
+            status: "SCHEDULED",
+          },
+        });
+      } else {
+        // WB finalist won outright → tournament over, cancel the unused reset game
+        await tx.game.update({
+          where: { id: resetGame.id },
+          data: { deletedAt: new Date() },
+        });
+      }
     }
   }
 }

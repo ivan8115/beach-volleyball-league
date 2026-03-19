@@ -78,7 +78,9 @@ export async function PATCH(req: Request, { params }: RouteParams) {
 
   // If team just withdrew from a registered spot, promote next from waitlist
   if (body.registrationStatus === "WITHDRAWN" && wasRegistered) {
-    void promoteFromWaitlist(eventId, orgSlug);
+    void promoteFromWaitlist(eventId, orgSlug).catch((err: unknown) =>
+      console.error("[waitlist] promotion failed after withdrawal", { eventId, teamId, err })
+    );
   }
 
   return NextResponse.json(updated);
@@ -105,7 +107,9 @@ export async function DELETE(_req: Request, { params }: RouteParams) {
 
   // Free up the spot — promote next team from waitlist
   if (wasRegistered) {
-    void promoteFromWaitlist(eventId, orgSlug);
+    void promoteFromWaitlist(eventId, orgSlug).catch((err: unknown) =>
+      console.error("[waitlist] promotion failed after deletion", { eventId, teamId, err })
+    );
   }
 
   return NextResponse.json({ success: true });

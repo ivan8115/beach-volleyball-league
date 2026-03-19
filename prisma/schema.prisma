@@ -139,6 +139,7 @@ enum PaymentStatus {
 }
 
 enum AnnouncementTargetType {
+  ORG
   EVENT
   DIVISION
   TEAM

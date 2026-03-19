@@ -50,9 +50,14 @@ export async function POST(req: Request, { params }: RouteParams) {
     return NextResponse.json({ error: "title, body, and targetType are required" }, { status: 400 });
   }
 
-  const validTargetTypes: AnnouncementTargetType[] = ["EVENT", "DIVISION", "TEAM"];
+  const validTargetTypes: AnnouncementTargetType[] = ["ORG", "EVENT", "DIVISION", "TEAM"];
   if (!validTargetTypes.includes(body.targetType)) {
     return NextResponse.json({ error: "Invalid targetType" }, { status: 400 });
+  }
+
+  // ORG-scoped announcements must not reference an event
+  if (body.targetType === "ORG" && body.eventId) {
+    return NextResponse.json({ error: "ORG announcements cannot be scoped to an event" }, { status: 400 });
   }
 
   // If targeting a division or team, eventId is required

@@ -3,6 +3,7 @@ import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
 import { advanceBracketTeams } from "@/lib/bracket-advancement";
 import { logActivity } from "@/lib/activity-log";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 interface RouteParams {
   params: Promise<{
@@ -17,6 +18,11 @@ export async function PUT(req: Request, { params }: RouteParams) {
   const { orgSlug, eventId, gameId, setNumber: setNumberStr } = await params;
   const ctx = await getOrgContext(orgSlug, "SCORER");
   if (!ctx) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  // Rate limit: 30 score entries per scorer per game per minute
+  if (!checkRateLimit(`score:${ctx.userId}:${gameId}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
 
   const setNumber = parseInt(setNumberStr);
   if (isNaN(setNumber) || setNumber < 1) {
@@ -48,6 +54,9 @@ export async function PUT(req: Request, { params }: RouteParams) {
   }
   if (body.homeScore < 0 || body.awayScore < 0) {
     return NextResponse.json({ error: "Scores cannot be negative" }, { status: 400 });
+  }
+  if (body.homeScore > 200 || body.awayScore > 200) {
+    return NextResponse.json({ error: "Score exceeds maximum allowed value" }, { status: 400 });
   }
   if (body.homeScore === body.awayScore) {
     return NextResponse.json({ error: "Ties are not allowed in volleyball" }, { status: 400 });
