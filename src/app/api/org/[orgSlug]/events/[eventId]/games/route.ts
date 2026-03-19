@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 import { generateLeagueSchedule } from "@/lib/league-scheduler";
 import {
   generateSingleElim,
@@ -152,7 +153,7 @@ async function handleGenerateLeague(
     weeks: event.weeks,
   });
 
-  await prisma.$transaction(async (tx) => {
+  await withOrgTransaction(orgId, async (tx) => {
     // Delete existing if force
     if (force && existing > 0) {
       await tx.gameSet.deleteMany({
@@ -282,7 +283,7 @@ async function handleGenerateBracket(
       ? generateDoubleElim(seededTeams, scheduledAt)
       : generateSingleElim(seededTeams, scheduledAt);
 
-  await prisma.$transaction(async (tx) => {
+  await withOrgTransaction(orgId, async (tx) => {
     if (force && existing > 0) {
       await tx.gameSet.deleteMany({
         where: {
@@ -423,7 +424,7 @@ async function handleGeneratePoolPlay(
   const poolAssignments = generatePoolAssignments(seededTeams, event.teamsPerPool);
   const poolGames = generatePoolGames(poolAssignments, scheduledAt);
 
-  await prisma.$transaction(async (tx) => {
+  await withOrgTransaction(orgId, async (tx) => {
     if (force && existing > 0) {
       await tx.gameSet.deleteMany({
         where: { game: { eventId: event.id, bracketSide: null } },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 import { advanceBracketTeams } from "@/lib/bracket-advancement";
 import { logActivity } from "@/lib/activity-log";
 import { checkRateLimit } from "@/lib/rate-limit";
@@ -78,7 +79,7 @@ export async function PUT(req: Request, { params }: RouteParams) {
 
   const existingSet = game.sets.find((s) => s.setNumber === setNumber);
 
-  await prisma.$transaction(async (tx) => {
+  await withOrgTransaction(ctx.orgId, async (tx) => {
     if (existingSet) {
       // Create history record before updating
       await tx.gameScoreHistory.create({

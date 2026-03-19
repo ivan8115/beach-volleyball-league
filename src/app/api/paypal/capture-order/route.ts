@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 import { capturePaypalOrder } from "@/lib/paypal";
 import type { PaypalContext } from "@/app/api/paypal/create-order/route";
 
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
 
   const event = await prisma.event.findFirst({
     where: { id: body.context.eventId, deletedAt: null },
-    select: { id: true, type: true, maxTeams: true },
+    select: { id: true, type: true, maxTeams: true, organizationId: true },
   });
   if (!event) {
     console.error(`[PayPal orphan] capture ${transactionId} - event not found`);
@@ -43,7 +44,7 @@ export async function POST(req: Request) {
   }
 
   try {
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await withOrgTransaction(event.organizationId, async (tx) => {
       // Update payment to COMPLETED
       await tx.payment.update({
         where: { id: body.paymentId },

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 
 interface RouteParams {
   params: Promise<{ orgSlug: string; eventId: string; gameId: string }>;
@@ -90,28 +91,30 @@ export async function PUT(req: Request, { params }: RouteParams) {
   }
 
   // Upsert each stat entry
-  const results = await prisma.$transaction(
-    body.map((entry) =>
-      prisma.gameStat.upsert({
-        where: { gameId_userId: { gameId, userId: entry.userId } },
-        create: {
-          gameId,
-          userId: entry.userId,
-          teamId: entry.teamId,
-          kills: entry.kills ?? 0,
-          aces: entry.aces ?? 0,
-          digs: entry.digs ?? 0,
-          blocks: entry.blocks ?? 0,
-          errors: entry.errors ?? 0,
-        },
-        update: {
-          kills: entry.kills ?? 0,
-          aces: entry.aces ?? 0,
-          digs: entry.digs ?? 0,
-          blocks: entry.blocks ?? 0,
-          errors: entry.errors ?? 0,
-        },
-      })
+  const results = await withOrgTransaction(ctx.orgId, async (tx) =>
+    Promise.all(
+      body.map((entry) =>
+        tx.gameStat.upsert({
+          where: { gameId_userId: { gameId, userId: entry.userId } },
+          create: {
+            gameId,
+            userId: entry.userId,
+            teamId: entry.teamId,
+            kills: entry.kills ?? 0,
+            aces: entry.aces ?? 0,
+            digs: entry.digs ?? 0,
+            blocks: entry.blocks ?? 0,
+            errors: entry.errors ?? 0,
+          },
+          update: {
+            kills: entry.kills ?? 0,
+            aces: entry.aces ?? 0,
+            digs: entry.digs ?? 0,
+            blocks: entry.blocks ?? 0,
+            errors: entry.errors ?? 0,
+          },
+        })
+      )
     )
   );
 

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 import { checkEventLimit } from "@/lib/plan-limits";
 import type { EventType, EventVisibility, RefundPolicy, SeedingType, BracketType } from "@/generated/prisma/enums";
 
@@ -81,7 +82,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     return NextResponse.json({ error: limitError, limitReached: true }, { status: 403 });
   }
 
-  const event = await prisma.$transaction(async (tx) => {
+  const event = await withOrgTransaction(ctx.orgId, async (tx) => {
     const created = await tx.event.create({
       data: {
         organizationId: ctx.orgId,

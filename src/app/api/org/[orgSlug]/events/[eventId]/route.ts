@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 import type { EventVisibility, RefundPolicy, SeedingType, BracketType } from "@/generated/prisma/enums";
 
 interface RouteParams {
@@ -73,7 +74,7 @@ export async function PATCH(req: Request, { params }: RouteParams) {
     divisions?: DivisionInput[];
   };
 
-  await prisma.$transaction(async (tx) => {
+  await withOrgTransaction(ctx.orgId, async (tx) => {
     await tx.event.update({
       where: { id: eventId },
       data: {

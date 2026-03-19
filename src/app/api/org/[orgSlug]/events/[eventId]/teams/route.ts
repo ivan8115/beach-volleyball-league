@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getOrgContext } from "@/lib/api/get-org-context";
 import { prisma } from "@/lib/prisma";
+import { withOrgTransaction } from "@/lib/prisma-rls";
 import { notifyRegistrationConfirmed } from "@/lib/notifications";
 
 interface RouteParams {
@@ -89,7 +90,7 @@ export async function POST(req: Request, { params }: RouteParams) {
     }
   }
 
-  const team = await prisma.$transaction(async (tx) => {
+  const team = await withOrgTransaction(ctx.orgId, async (tx) => {
     const created = await tx.team.create({
       data: {
         name: body.name.trim(),
