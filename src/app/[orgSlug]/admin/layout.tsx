@@ -49,7 +49,7 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
           <p className="mt-2 text-muted-foreground">
             You don&apos;t have admin access to this organization.
           </p>
-          <Link href={`/${orgSlug}/dashboard`} className="mt-4 block text-primary underline">
+          <Link href="/dashboard" className="mt-4 block text-primary underline">
             Go to dashboard
           </Link>
         </div>
@@ -63,10 +63,10 @@ export default async function AdminLayout({ children, params }: AdminLayoutProps
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
           <div className="flex items-center gap-4">
             <Link
-              href={`/${orgSlug}/dashboard`}
+              href="/dashboard"
               className="text-sm text-muted-foreground hover:text-foreground"
             >
-              ← {org.name}
+              ← All orgs
             </Link>
             <span className="font-semibold">Admin</span>
           </div>

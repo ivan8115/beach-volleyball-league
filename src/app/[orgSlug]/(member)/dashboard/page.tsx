@@ -77,7 +77,11 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
   const membership = org.members[0];
   if (!membership) redirect(`/${orgSlug}/join`);
 
-  const isAdmin = membership.role === "ADMIN" || membership.role === "SCORER";
+  if (membership.role === "ADMIN" || membership.role === "SCORER") {
+    redirect(`/${orgSlug}/admin`);
+  }
+
+  const isAdmin = false;
 
   // Fetch user's team registrations for this org's events
   const myTeams = await prisma.teamMember.findMany({
@@ -137,12 +141,7 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
             <Badge variant="outline">{membership.role.toLowerCase()}</Badge>
           </div>
           <div className="flex items-center gap-2">
-            {isAdmin && (
-              <Button asChild variant="outline" size="sm">
-                <Link href={`/${orgSlug}/admin`}>Admin</Link>
-              </Button>
-            )}
-            <Button asChild variant="ghost" size="sm">
+              <Button asChild variant="ghost" size="sm">
               <Link href="/profile">Profile</Link>
             </Button>
           </div>
@@ -151,6 +150,15 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         <h1 className="mb-8 text-2xl font-bold">Dashboard</h1>
+
+        {upcomingGames.length === 0 && myTeams.length === 0 && org.events.length === 0 && (
+          <div className="rounded-lg border border-dashed p-10 text-center mb-8">
+            <p className="font-medium mb-1">Nothing here yet</p>
+            <p className="text-sm text-muted-foreground">
+              No events are open for registration right now. Check back soon.
+            </p>
+          </div>
+        )}
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-8">
@@ -224,7 +232,12 @@ export default async function MemberDashboardPage({ params }: MemberDashboardPro
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-gray-100 text-gray-600"
                           }`}>
-                            {tm.team.registrationStatus}
+                            {{
+                              REGISTERED: "Registered",
+                              WAITLISTED: "Waitlisted",
+                              PENDING_PAYMENT: "Pending payment",
+                              WITHDRAWN: "Withdrawn",
+                            }[tm.team.registrationStatus] ?? tm.team.registrationStatus}
                           </span>
                           <Link
                             href={`/${orgSlug}/events/${tm.team.event.id}/team/${tm.team.id}`}

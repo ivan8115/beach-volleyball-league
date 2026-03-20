@@ -22,6 +22,7 @@ export default async function PublicEventPage({ params }: PageProps) {
   const { data: { user } } = await supabase.auth.getUser();
   let isMember = false;
   let alreadyRegistered = false;
+  let registeredTeamId: string | null = null;
 
   const org = await prisma.organization.findFirst({
     where: { slug: orgSlug, deletedAt: null },
@@ -47,11 +48,13 @@ export default async function PublicEventPage({ params }: PageProps) {
             team: { eventId, deletedAt: null },
             deletedAt: null,
           },
+          select: { teamId: true },
         });
         const freeAgent = await prisma.freeAgent.findFirst({
           where: { userId: dbUser.id, eventId },
         });
         alreadyRegistered = !!(teamMembership ?? freeAgent);
+        registeredTeamId = teamMembership?.teamId ?? null;
       }
     }
   }
@@ -117,7 +120,17 @@ export default async function PublicEventPage({ params }: PageProps) {
           (!event.registrationDeadline || new Date() < event.registrationDeadline) && (
             <div className="rounded-lg border bg-muted/30 px-6 py-4 flex items-center justify-between gap-4 flex-wrap">
               {alreadyRegistered ? (
-                <p className="text-sm font-medium text-green-700">You&apos;re registered for this event.</p>
+                <div className="flex items-center justify-between gap-4 w-full flex-wrap">
+                  <p className="text-sm font-medium text-green-700">You&apos;re registered for this event.</p>
+                  {registeredTeamId && (
+                    <Link
+                      href={`/${orgSlug}/events/${eventId}/team/${registeredTeamId}`}
+                      className="text-sm text-primary hover:underline"
+                    >
+                      View your team →
+                    </Link>
+                  )}
+                </div>
               ) : isMember ? (
                 <>
                   <p className="text-sm font-medium">Registration is open!</p>
@@ -200,6 +213,14 @@ export default async function PublicEventPage({ params }: PageProps) {
           </div>
         </div>
 
+        {/* Description */}
+        {event.description && (
+          <section className="space-y-2">
+            <h2 className="text-lg font-semibold">About this event</h2>
+            <p className="text-sm text-muted-foreground whitespace-pre-line">{event.description}</p>
+          </section>
+        )}
+
         {/* Announcements */}
         {event.announcements.length > 0 && (
           <section className="space-y-3">
@@ -220,14 +241,6 @@ export default async function PublicEventPage({ params }: PageProps) {
                 </div>
               ))}
             </div>
-          </section>
-        )}
-
-        {/* Description */}
-        {event.description && (
-          <section className="space-y-2">
-            <h2 className="text-lg font-semibold">About this event</h2>
-            <p className="text-sm text-muted-foreground whitespace-pre-line">{event.description}</p>
           </section>
         )}
 

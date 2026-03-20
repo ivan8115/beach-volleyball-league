@@ -70,31 +70,26 @@ export default async function DashboardPage() {
           <div>
             <h2 className="mb-4 text-lg font-semibold">Your organizations</h2>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {dbUser.organizations.map(({ organization, role }) => (
-                <Card key={organization.id} className="hover:shadow-md transition-shadow">
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <CardTitle className="text-base">{organization.name}</CardTitle>
-                      <Badge variant={role === "ADMIN" ? "default" : "secondary"}>
-                        {role.toLowerCase()}
-                      </Badge>
-                    </div>
-                    <CardDescription>/{organization.slug}</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex gap-2">
-                      <Button asChild size="sm" variant="outline" className="flex-1">
-                        <Link href={`/${organization.slug}/dashboard`}>Open</Link>
-                      </Button>
-                      {role === "ADMIN" && (
-                        <Button asChild size="sm" variant="ghost">
-                          <Link href={`/${organization.slug}/admin`}>Admin</Link>
-                        </Button>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+              {dbUser.organizations.map(({ organization, role }) => {
+                const href = role === "ADMIN" || role === "SCORER"
+                  ? `/${organization.slug}/admin`
+                  : `/${organization.slug}/dashboard`;
+                return (
+                  <Link key={organization.id} href={href} className="block">
+                    <Card className="hover:shadow-md transition-shadow h-full cursor-pointer">
+                      <CardHeader>
+                        <div className="flex items-start justify-between">
+                          <CardTitle className="text-base">{organization.name}</CardTitle>
+                          <Badge variant={role === "ADMIN" ? "default" : "secondary"}>
+                            {role.toLowerCase()}
+                          </Badge>
+                        </div>
+                        <CardDescription>/{organization.slug}</CardDescription>
+                      </CardHeader>
+                    </Card>
+                  </Link>
+                );
+              })}
             </div>
           </div>
         )}

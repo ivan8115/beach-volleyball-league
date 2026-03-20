@@ -1,34 +1,53 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "path";
+
+const AUTH_FILE = path.join(__dirname, "e2e/.auth/user.json");
+
+// WSL2: Playwright's bundled browsers are missing system libs (libnspr4, libasound2).
+// Use the Windows Chrome installation accessible through the WSL2 filesystem.
+const CHROME_EXEC = "/mnt/c/Program Files/Google/Chrome/Application/chrome.exe";
+
+const chromeOptions = {
+  ...devices["Desktop Chrome"],
+  executablePath: CHROME_EXEC,
+  args: ["--no-sandbox", "--disable-setuid-sandbox"],
+};
 
 export default defineConfig({
   testDir: "./e2e",
-  // Fail fast on first test failure in each file
-  fullyParallel: true,
-  // No retries in dev — deterministic feedback is more valuable
+  fullyParallel: false,
   retries: 0,
-  // Single worker to keep test output readable in dev
   workers: 1,
   reporter: [["list"], ["html", { open: "never" }]],
 
   use: {
     baseURL: "http://localhost:3000",
-    // Screenshot on failure
     screenshot: "only-on-failure",
-    // Reasonable timeout for page interactions
     actionTimeout: 10_000,
     navigationTimeout: 15_000,
   },
 
   projects: [
+    // ── Step 1: log in once and save session ──────────────────────────────────
     {
-      // Using Firefox because Chromium headless shell requires system libraries
-      // (libnspr4, libnss3) that are not installed in this WSL2 environment.
-      // Switch back to "chromium" once those dependencies are available.
-      name: "firefox",
-      use: { ...devices["Desktop Firefox"] },
+      name: "setup",
+      testMatch: /global\.setup\.ts/,
+      use: chromeOptions,
+    },
+
+    // ── Unauthenticated tests (landing, login, register) ─────────────────────
+    {
+      name: "public",
+      testMatch: /\/(landing|auth|navigation|public-pages)\.spec\.ts/,
+      use: chromeOptions,
+    },
+
+    // ── Authenticated tests (admin + member flows) ────────────────────────────
+    {
+      name: "authenticated",
+      testMatch: /\/(admin-smoke|member-smoke)\.spec\.ts/,
+      dependencies: ["setup"],
+      use: { ...chromeOptions, storageState: AUTH_FILE },
     },
   ],
-
-  // Auth state storage directory (for future authenticated test setup)
-  // e2e/.auth/user.json would be created by a global setup when auth is implemented
 });

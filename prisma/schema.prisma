@@ -15,6 +15,7 @@ datasource db {
 enum Gender {
   MALE
   FEMALE
+  OTHER
 }
 
 enum SkillLevel {

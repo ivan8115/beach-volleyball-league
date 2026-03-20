@@ -94,15 +94,13 @@ export default async function AdminEventsPage({ params }: PageProps) {
             const deadlineSoon = daysUntilDeadline != null && daysUntilDeadline >= 0 && daysUntilDeadline <= 3;
             const startDate = event.startDate ?? event.tournamentStartDate;
 
+            const defaultHref = `/${orgSlug}/admin/events/${event.id}/teams`;
             return (
-              <div key={event.id} className="rounded-lg border p-4 hover:bg-muted/20 transition-colors">
+              <div key={event.id} className="relative rounded-lg border p-4 hover:bg-muted/20 transition-colors">
                 <div className="flex items-start justify-between gap-4 flex-wrap">
                   <div className="min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
-                      <Link
-                        href={`/${orgSlug}/admin/events/${event.id}/teams`}
-                        className="font-medium hover:underline"
-                      >
+                      <Link href={defaultHref} className="font-medium hover:underline before:absolute before:inset-0">
                         {event.name}
                       </Link>
                       <EventStatusBadge status={event.status as EventStatus} />
@@ -143,18 +141,12 @@ export default async function AdminEventsPage({ params }: PageProps) {
                     )}
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="relative z-10 flex items-center gap-2 shrink-0">
                     <Link
                       href={`/${orgSlug}/events/${event.id}`}
                       className="text-xs text-muted-foreground hover:underline"
                     >
                       Public page
-                    </Link>
-                    <Link
-                      href={`/${orgSlug}/admin/events/${event.id}/teams`}
-                      className="text-xs text-primary hover:underline"
-                    >
-                      Teams
                     </Link>
                     {event.type === "LEAGUE" ? (
                       <Link

@@ -18,7 +18,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 export default function OnboardingPage() {
   const router = useRouter();
   const [name, setName] = useState("");
-  const [gender, setGender] = useState<"MALE" | "FEMALE" | "">("");
+  const [gender, setGender] = useState<"MALE" | "FEMALE" | "OTHER" | "">("");
   const [skillLevel, setSkillLevel] = useState<
     "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "OPEN" | ""
   >("");
@@ -95,7 +95,7 @@ export default function OnboardingPage() {
               <Label htmlFor="gender">Gender</Label>
               <Select
                 value={gender}
-                onValueChange={(v) => setGender(v as "MALE" | "FEMALE")}
+                onValueChange={(v) => setGender(v as "MALE" | "FEMALE" | "OTHER")}
               >
                 <SelectTrigger id="gender">
                   <SelectValue placeholder="Select gender" />
@@ -103,6 +103,7 @@ export default function OnboardingPage() {
                 <SelectContent>
                   <SelectItem value="MALE">Male</SelectItem>
                   <SelectItem value="FEMALE">Female</SelectItem>
+                  <SelectItem value="OTHER">Prefer not to say</SelectItem>
                 </SelectContent>
               </Select>
             </div>

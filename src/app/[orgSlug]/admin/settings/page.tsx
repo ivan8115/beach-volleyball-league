@@ -6,6 +6,41 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { CopyButton } from "@/components/copy-button";
+
+const COMMON_TIMEZONES = [
+  { label: "Eastern Time (US & Canada)", value: "America/New_York" },
+  { label: "Central Time (US & Canada)", value: "America/Chicago" },
+  { label: "Mountain Time (US & Canada)", value: "America/Denver" },
+  { label: "Pacific Time (US & Canada)", value: "America/Los_Angeles" },
+  { label: "Alaska", value: "America/Anchorage" },
+  { label: "Hawaii", value: "Pacific/Honolulu" },
+  { label: "Atlantic Time (Canada)", value: "America/Halifax" },
+  { label: "Toronto / Montreal", value: "America/Toronto" },
+  { label: "Vancouver", value: "America/Vancouver" },
+  { label: "Phoenix (no DST)", value: "America/Phoenix" },
+  { label: "London", value: "Europe/London" },
+  { label: "Paris / Berlin / Rome", value: "Europe/Paris" },
+  { label: "Helsinki / Kyiv", value: "Europe/Helsinki" },
+  { label: "Dubai", value: "Asia/Dubai" },
+  { label: "Singapore / Hong Kong", value: "Asia/Singapore" },
+  { label: "Tokyo / Seoul", value: "Asia/Tokyo" },
+  { label: "Sydney", value: "Australia/Sydney" },
+  { label: "Melbourne", value: "Australia/Melbourne" },
+  { label: "Auckland", value: "Pacific/Auckland" },
+  { label: "São Paulo", value: "America/Sao_Paulo" },
+  { label: "Mexico City", value: "America/Mexico_City" },
+  { label: "Bogotá / Lima", value: "America/Bogota" },
+  { label: "Buenos Aires", value: "America/Argentina/Buenos_Aires" },
+  { label: "UTC", value: "UTC" },
+];
 
 interface OrgSettings {
   name: string;
@@ -127,13 +162,18 @@ export default function AdminSettingsPage() {
 
               <div className="space-y-2">
                 <Label htmlFor="timezone">Timezone</Label>
-                <Input
-                  id="timezone"
-                  value={timezone}
-                  onChange={(e) => setTimezone(e.target.value)}
-                  required
-                  placeholder="America/New_York"
-                />
+                <Select value={timezone} onValueChange={setTimezone}>
+                  <SelectTrigger id="timezone">
+                    <SelectValue placeholder="Select timezone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMMON_TIMEZONES.map((tz) => (
+                      <SelectItem key={tz.value} value={tz.value}>
+                        {tz.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-2">
@@ -197,6 +237,7 @@ export default function AdminSettingsPage() {
           <CardContent>
             <div className="flex items-center gap-3">
               <p className="font-mono text-2xl font-bold tracking-widest">{settings.joinCode}</p>
+              <CopyButton text={settings.joinCode} />
             </div>
           </CardContent>
         </Card>

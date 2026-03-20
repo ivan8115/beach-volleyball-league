@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CopyButton } from "@/components/copy-button";
 
 interface AdminOverviewProps {
   params: Promise<{ orgSlug: string }>;
@@ -86,8 +87,9 @@ export default async function AdminOverviewPage({ params }: AdminOverviewProps) 
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Join code</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex items-center gap-3">
             <p className="font-mono text-xl font-bold tracking-widest">{org.joinCode}</p>
+            <CopyButton text={org.joinCode} />
           </CardContent>
         </Card>
       </div>
